@@ -1,0 +1,1193 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>SiPustaka — Sistem Informasi Perpustakaan</title>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <style>
+  /* ═══════════════════════════════════════
+     TOKENS
+  ═══════════════════════════════════════ */
+  :root{
+    --cream:#FAF6EF; --brown:#3B2A1A; --gold:#C9962C; --gold-lt:#E8BC5C;
+    --rust:#A0522D;  --green:#2D6A4F; --red:#B5373A;
+    --card:#FFFDF8;  --border:#E8DFD0;
+    --sh:0 4px 24px rgba(59,42,26,.10);
+    --r:14px;
+    --fh:'Playfair Display',serif; --fb:'DM Sans',sans-serif;
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;font-family:var(--fb);background:var(--cream);color:var(--brown);overflow:hidden}
+
+  /* ═══════════════════════════════════════
+     PAGE SYSTEM
+  ═══════════════════════════════════════ */
+  .page{position:fixed;inset:0;display:flex;flex-direction:column;opacity:0;pointer-events:none;transform:translateY(14px);transition:opacity .3s,transform .3s;overflow:hidden}
+  .page.active{opacity:1;pointer-events:all;transform:translateY(0)}
+  .page-body{flex:1;overflow-y:auto;padding:2rem 1.5rem}
+  .inner{max-width:1060px;margin:0 auto}
+
+  /* ═══════════════════════════════════════
+     NAVBAR — shared base
+  ═══════════════════════════════════════ */
+  .app-nav{
+    background:var(--brown);padding:.85rem 2rem;
+    display:flex;align-items:center;justify-content:space-between;
+    flex-shrink:0;box-shadow:0 2px 14px rgba(0,0,0,.28);
+    z-index:100;position:relative;
+  }
+  .nav-brand{display:flex;align-items:center;gap:.7rem;text-decoration:none}
+  .nav-brand-icon{width:36px;height:36px;background:linear-gradient(135deg,var(--gold),var(--gold-lt));border-radius:9px;display:flex;align-items:center;justify-content:center}
+  .nav-brand-icon i{color:var(--brown);font-size:1rem}
+  .nav-brand-text{font-family:var(--fh);font-size:1.3rem;color:#fff;font-weight:700}
+
+  /* Desktop nav links (hidden on mobile) */
+  .nav-center{display:none;align-items:center;gap:.25rem}
+  .nav-right{display:none;align-items:center;gap:.5rem}
+  @media(min-width:768px){
+    .nav-center{display:flex}
+    .nav-right{display:flex}
+    .btn-hamburger{display:none!important}
+    .nav-dropdown{display:none!important}
+  }
+
+  .nav-link{background:transparent;border:none;color:rgba(255,255,255,.75);font-family:var(--fb);font-size:.9rem;font-weight:500;padding:.45rem .9rem;border-radius:8px;cursor:pointer;transition:background .18s,color .18s;display:flex;align-items:center;gap:.45rem}
+  .nav-link:hover,.nav-link.active-link{background:rgba(255,255,255,.12);color:#fff}
+  .nav-link i{font-size:.85rem}
+
+  /* Avatar button (desktop) */
+  .nav-avatar-btn{width:34px;height:34px;border-radius:50%;border:2px solid rgba(255,255,255,.4);background:linear-gradient(135deg,var(--gold),var(--rust));display:flex;align-items:center;justify-content:center;cursor:pointer;transition:border-color .2s;overflow:hidden}
+  .nav-avatar-btn:hover{border-color:var(--gold-lt)}
+  .nav-avatar-btn i{color:#fff;font-size:1rem}
+  .btn-nav-logout{background:transparent;border:1.5px solid rgba(255,255,255,.28);border-radius:8px;padding:.38rem .85rem;color:rgba(255,255,255,.8);font-family:var(--fb);font-size:.82rem;cursor:pointer;transition:background .18s;display:flex;align-items:center;gap:.4rem}
+  .btn-nav-logout:hover{background:rgba(255,255,255,.1);color:#fff}
+
+  /* Hamburger (mobile only) */
+  .btn-hamburger{background:transparent;border:none;cursor:pointer;padding:.35rem .45rem;display:flex;flex-direction:column;gap:5px;border-radius:8px;transition:background .2s}
+  .btn-hamburger:hover{background:rgba(255,255,255,.12)}
+  .btn-hamburger span{display:block;width:21px;height:2.5px;background:#fff;border-radius:2px}
+
+  /* Mobile dropdown */
+  .nav-dropdown{position:absolute;top:calc(100% + 6px);right:1rem;background:var(--card);border:1.5px solid var(--border);border-radius:13px;min-width:190px;box-shadow:0 10px 36px rgba(59,42,26,.18);z-index:200;opacity:0;pointer-events:none;transform:translateY(-8px) scale(.97);transition:opacity .22s,transform .22s;overflow:hidden}
+  .nav-dropdown.open{opacity:1;pointer-events:all;transform:none}
+  .dd-item{display:flex;align-items:center;gap:.8rem;padding:.8rem 1.15rem;font-size:.9rem;font-weight:500;color:var(--brown);cursor:pointer;transition:background .14s;border-bottom:1px solid var(--border)}
+  .dd-item:last-child{border-bottom:none}
+  .dd-item:hover{background:rgba(201,150,44,.08)}
+  .dd-item.danger{color:var(--red)}
+  .dd-item.danger:hover{background:rgba(181,55,58,.07)}
+  .dd-item i{width:18px;text-align:center;color:var(--gold)}
+  .dd-item.danger i{color:var(--red)}
+
+  /* ═══════════════════════════════════════
+     BERANDA (halaman publik)
+  ═══════════════════════════════════════ */
+  .hero{
+    background:linear-gradient(135deg,var(--brown) 0%,#5a3820 55%,var(--rust) 100%);
+    padding:4rem 2rem 3.5rem;text-align:center;color:#fff;position:relative;overflow:hidden;flex-shrink:0;
+  }
+  .hero::before{content:'';position:absolute;inset:0;background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Ccircle cx='30' cy='30' r='20'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");}
+  .hero-inner{position:relative;max-width:680px;margin:0 auto}
+  .hero-badge{display:inline-block;background:rgba(201,150,44,.25);border:1px solid rgba(201,150,44,.5);color:var(--gold-lt);border-radius:20px;padding:.3rem .9rem;font-size:.75rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:1.25rem}
+  .hero h1{font-family:var(--fh);font-size:clamp(2rem,5vw,3rem);font-weight:900;margin-bottom:.75rem;line-height:1.15}
+  .hero p{color:rgba(255,255,255,.72);font-size:1rem;margin-bottom:2rem;line-height:1.6;max-width:500px;margin-left:auto;margin-right:auto}
+  .hero-actions{display:flex;gap:1rem;justify-content:center;flex-wrap:wrap}
+  .btn-hero-primary{background:linear-gradient(135deg,var(--gold),var(--rust));border:none;border-radius:11px;padding:.85rem 2rem;color:#fff;font-family:var(--fb);font-weight:700;font-size:1rem;cursor:pointer;transition:opacity .2s,transform .15s;display:flex;align-items:center;gap:.5rem}
+  .btn-hero-primary:hover{opacity:.88;transform:translateY(-2px)}
+  .btn-hero-ghost{background:transparent;border:2px solid rgba(255,255,255,.35);border-radius:11px;padding:.83rem 2rem;color:#fff;font-family:var(--fb);font-weight:600;font-size:1rem;cursor:pointer;transition:background .2s;display:flex;align-items:center;gap:.5rem}
+  .btn-hero-ghost:hover{background:rgba(255,255,255,.1)}
+
+  /* Statistik strip */
+  .stats-strip{background:var(--card);border-bottom:1px solid var(--border);padding:.85rem 2rem;display:flex;gap:2.5rem;justify-content:center;flex-wrap:wrap;flex-shrink:0}
+  .stat-item{text-align:center}
+  .stat-num{font-family:var(--fh);font-size:1.3rem;font-weight:900;color:var(--gold)}
+  .stat-lbl{font-size:.72rem;color:#9a8070;font-weight:600;text-transform:uppercase;letter-spacing:.05em}
+
+  /* ═══════════════════════════════════════
+     BERITA CARDS (beranda & page berita)
+  ═══════════════════════════════════════ */
+  .section-title{font-family:var(--fh);font-size:1.4rem;color:var(--brown);margin-bottom:1.25rem;display:flex;align-items:center;gap:.6rem}
+  .section-title::after{content:'';flex:1;height:1px;background:var(--border)}
+
+  .berita-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:1.25rem;margin-bottom:2rem}
+  .berita-card{background:var(--card);border:1.5px solid var(--border);border-radius:var(--r);overflow:hidden;cursor:pointer;transition:transform .2s,box-shadow .2s,border-color .2s}
+  .berita-card:hover{transform:translateY(-3px);box-shadow:var(--sh);border-color:var(--gold)}
+  .berita-thumb{height:90px;display:flex;align-items:center;justify-content:center;font-size:2rem}
+  .berita-thumb.t1{background:linear-gradient(135deg,rgba(201,150,44,.22),rgba(201,150,44,.07));color:var(--gold)}
+  .berita-thumb.t2{background:linear-gradient(135deg,rgba(45,106,79,.18),rgba(45,106,79,.05));color:var(--green)}
+  .berita-thumb.t3{background:linear-gradient(135deg,rgba(160,82,45,.18),rgba(160,82,45,.05));color:var(--rust)}
+  .berita-thumb.t4{background:linear-gradient(135deg,rgba(59,42,26,.12),rgba(201,150,44,.1));color:var(--brown)}
+  .berita-thumb.t5{background:linear-gradient(135deg,rgba(45,106,79,.18),rgba(201,150,44,.1));color:var(--green)}
+  .berita-body{padding:1rem 1.1rem 1.1rem}
+  .berita-tag{font-size:.68rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--gold);margin-bottom:.3rem}
+  .berita-judul{font-family:var(--fh);font-size:.98rem;font-weight:700;color:var(--brown);line-height:1.35;margin-bottom:.4rem}
+  .berita-ringkas{font-size:.8rem;color:#9a8070;line-height:1.5;margin-bottom:.55rem}
+  .berita-date{font-size:.72rem;color:#b0a090}
+
+  /* ═══════════════════════════════════════
+     MODAL: LOGIN / DAFTAR / BERITA DETAIL
+  ═══════════════════════════════════════ */
+  .modal-overlay{display:none;position:fixed;inset:0;background:rgba(59,42,26,.6);z-index:900;align-items:center;justify-content:center;padding:1rem}
+  .modal-overlay.show{display:flex}
+  .modal-box{background:var(--card);border-radius:20px;padding:2rem;width:100%;max-width:420px;box-shadow:0 20px 60px rgba(0,0,0,.25);position:relative;animation:mIn .25s ease}
+  @keyframes mIn{from{opacity:0;transform:scale(.93)}to{opacity:1;transform:scale(1)}}
+  .modal-close{position:absolute;top:1rem;right:1rem;background:var(--border);border:none;width:30px;height:30px;border-radius:50%;font-size:.85rem;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--brown);transition:background .18s}
+  .modal-close:hover{background:#ddd}
+  .modal-icon{width:54px;height:54px;background:linear-gradient(135deg,var(--gold),var(--rust));border-radius:14px;display:flex;align-items:center;justify-content:center;margin:0 auto 1rem}
+  .modal-icon i{font-size:1.5rem;color:#fff}
+  .modal-title{text-align:center;font-family:var(--fh);font-size:1.5rem;font-weight:900;color:var(--brown);margin-bottom:.2rem}
+  .modal-sub{text-align:center;color:#9a8070;font-size:.85rem;margin-bottom:1.5rem}
+  .form-label{font-weight:600;font-size:.82rem;letter-spacing:.04em;color:var(--brown);display:block;margin-bottom:.35rem}
+  .form-control{border:1.5px solid var(--border);border-radius:10px;padding:.7rem .95rem;font-family:var(--fb);font-size:.93rem;background:var(--cream);color:var(--brown);width:100%;transition:border-color .2s,box-shadow .2s}
+  .form-control:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px rgba(201,150,44,.14);background:#fff}
+  .form-group{margin-bottom:1rem}
+  .btn-modal-primary{width:100%;background:linear-gradient(135deg,var(--gold),var(--rust));border:none;border-radius:10px;padding:.8rem;color:#fff;font-weight:700;font-size:.95rem;font-family:var(--fb);cursor:pointer;transition:opacity .2s;margin-top:.25rem}
+  .btn-modal-primary:hover{opacity:.88}
+  .modal-switch{text-align:center;margin-top:1rem;font-size:.83rem;color:#9a8070}
+  .modal-switch a{color:var(--gold);font-weight:700;cursor:pointer;text-decoration:none}
+  .modal-switch a:hover{text-decoration:underline}
+  .err-msg{color:var(--red);font-size:.8rem;margin-top:.35rem;display:none}
+  .ok-msg{color:var(--green);font-size:.8rem;margin-top:.35rem;display:none}
+
+  /* Berita detail slide-up */
+  .berita-overlay{display:none;position:fixed;inset:0;background:rgba(59,42,26,.58);z-index:1000;align-items:flex-end;justify-content:center}
+  .berita-overlay.show{display:flex}
+  .berita-detail-box{background:var(--card);border-radius:22px 22px 0 0;width:100%;max-width:700px;max-height:88vh;overflow-y:auto;padding:2rem;animation:slideUp .3s ease}
+  @keyframes slideUp{from{transform:translateY(40px);opacity:0}to{transform:translateY(0);opacity:1}}
+  .bd-tag{font-size:.7rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--gold);margin-bottom:.5rem}
+  .bd-judul{font-family:var(--fh);font-size:1.35rem;font-weight:900;color:var(--brown);margin-bottom:.4rem;line-height:1.3}
+  .bd-meta{font-size:.77rem;color:#9a8070;margin-bottom:1.25rem}
+  .bd-body{font-size:.92rem;line-height:1.78;color:#4a3826}
+  .bd-body p{margin-bottom:.95rem}
+  .btn-tutup{background:transparent;border:1.5px solid var(--border);border-radius:8px;padding:.38rem .9rem;font-family:var(--fb);font-size:.83rem;color:var(--brown);cursor:pointer;margin-bottom:1.25rem;display:inline-flex;align-items:center;gap:.4rem}
+  .btn-tutup:hover{background:var(--border)}
+
+  /* ═══════════════════════════════════════
+     DASHBOARD (setelah login)
+  ═══════════════════════════════════════ */
+  .dash-welcome{margin-bottom:1.75rem}
+  .dash-welcome h2{font-family:var(--fh);font-size:1.75rem;color:var(--brown)}
+  .dash-welcome p{color:#9a8070;font-size:.93rem;margin-top:.25rem}
+  .text-gold{color:var(--gold)}
+  .menu-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;margin-bottom:1.75rem}
+  @media(max-width:480px){.menu-grid{grid-template-columns:1fr}}
+  .menu-card{background:var(--card);border:1.5px solid var(--border);border-radius:var(--r);padding:1.75rem 1.5rem;cursor:pointer;transition:transform .2s,box-shadow .2s,border-color .2s;display:flex;flex-direction:column;gap:.65rem;position:relative;overflow:hidden}
+  .menu-card::after{content:'';position:absolute;bottom:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--gold),var(--rust));transform:scaleX(0);transition:transform .25s}
+  .menu-card:hover{transform:translateY(-3px);box-shadow:var(--sh);border-color:var(--gold)}
+  .menu-card:hover::after{transform:scaleX(1)}
+  .menu-icon{width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.3rem}
+  .menu-icon.borrow{background:rgba(201,150,44,.14);color:var(--gold)}
+  .menu-icon.ret{background:rgba(45,106,79,.12);color:var(--green)}
+  .menu-card h4{font-family:var(--fh);font-size:1.15rem;margin:0}
+  .menu-card p{color:#9a8070;font-size:.85rem;margin:0}
+
+  .panel{background:var(--card);border:1.5px solid var(--border);border-radius:var(--r);overflow:hidden;box-shadow:var(--sh)}
+  .panel-header{padding:1rem 1.5rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+  .panel-header h5{margin:0;font-family:var(--fh);font-size:1.05rem}
+  .panel-body{padding:1.5rem}
+  .btn-back{background:transparent;border:1.5px solid var(--border);border-radius:8px;padding:.32rem .8rem;font-size:.8rem;font-family:var(--fb);color:var(--brown);cursor:pointer;transition:background .18s;display:flex;align-items:center;gap:.35rem}
+  .btn-back:hover{background:var(--border)}
+
+  /* Table */
+  .book-table{width:100%;border-collapse:collapse;font-size:.88rem}
+  .book-table th{background:var(--brown);color:#fff;padding:.7rem .95rem;text-align:left;font-weight:600;font-size:.8rem;letter-spacing:.04em}
+  .book-table th:first-child{border-radius:8px 0 0 8px}
+  .book-table th:last-child{border-radius:0 8px 8px 0}
+  .book-table td{padding:.8rem .95rem;border-bottom:1px solid var(--border);vertical-align:middle}
+  .book-table tr:last-child td{border-bottom:none}
+  .book-table tr:hover td{background:rgba(201,150,44,.05)}
+  .stock-badge{display:inline-block;padding:.22rem .6rem;border-radius:20px;font-size:.75rem;font-weight:600}
+  .stock-badge.ok{background:rgba(45,106,79,.12);color:var(--green)}
+  .stock-badge.empty{background:rgba(181,55,58,.1);color:var(--red)}
+  .stock-badge.late{background:rgba(181,55,58,.1);color:var(--red)}
+  .btn-pinjam{background:linear-gradient(135deg,var(--gold),var(--rust));border:none;border-radius:7px;padding:.38rem .9rem;color:#fff;font-size:.8rem;font-weight:700;font-family:var(--fb);cursor:pointer;transition:opacity .2s}
+  .btn-pinjam:hover{opacity:.84}
+  .btn-pinjam:disabled{background:#ccc;cursor:not-allowed}
+
+  /* Return form */
+  .return-form{max-width:520px}
+  .input-row{display:flex;gap:.65rem;margin-bottom:.9rem}
+  .btn-cari{background:linear-gradient(135deg,var(--green),#1a4535);border:none;border-radius:10px;padding:.7rem 1.35rem;color:#fff;font-weight:700;font-size:.9rem;font-family:var(--fb);cursor:pointer;white-space:nowrap;flex-shrink:0;transition:opacity .2s}
+  .btn-cari:hover{opacity:.88}
+  .result-card{border-radius:12px;padding:1.35rem;margin-top:1.35rem;border:1.5px solid var(--border);display:none}
+  .result-card.show{display:block}
+  .result-card.fine{border-color:rgba(181,55,58,.4);background:rgba(181,55,58,.05)}
+  .result-card.good{border-color:rgba(45,106,79,.4);background:rgba(45,106,79,.05)}
+  .result-row{display:flex;justify-content:space-between;padding:.45rem 0;border-bottom:1px solid var(--border);font-size:.88rem}
+  .result-row:last-child{border-bottom:none}
+  .result-label{color:#9a8070}
+  .result-value{font-weight:600}
+  .fine-amount{font-size:1.25rem;color:var(--red);font-weight:700;font-family:var(--fh)}
+  .no-fine{font-size:1.05rem;color:var(--green);font-weight:700}
+  .btn-konfirmasi{width:100%;margin-top:1.1rem;background:linear-gradient(135deg,var(--green),#1a4535);border:none;border-radius:10px;padding:.75rem;color:#fff;font-weight:700;font-size:.92rem;font-family:var(--fb);cursor:pointer;transition:opacity .2s}
+  .btn-konfirmasi:hover{opacity:.88}
+
+  /* Empty */
+  .empty-state{text-align:center;padding:2.5rem 1rem;color:#b0a090}
+  .empty-state i{font-size:2.5rem;margin-bottom:.8rem;display:block}
+
+  /* Pinjam confirm modal */
+  .modal-info{background:var(--cream);border-radius:10px;padding:.95rem;margin:1rem 0;font-size:.9rem}
+  .modal-info .bk{font-weight:700;font-size:.97rem;margin-bottom:.3rem}
+  .modal-info span{color:#9a8070;font-size:.8rem}
+  .modal-actions{display:flex;gap:.65rem;justify-content:flex-end;margin-top:.9rem}
+  .btn-cancel{background:var(--border);border:none;border-radius:9px;padding:.55rem 1.15rem;font-family:var(--fb);font-weight:600;cursor:pointer}
+  .btn-confirm{background:linear-gradient(135deg,var(--gold),var(--rust));border:none;border-radius:9px;padding:.55rem 1.35rem;color:#fff;font-family:var(--fb);font-weight:700;cursor:pointer}
+
+  /* ═══════════════════════════════════════
+     PROFIL PAGE
+  ═══════════════════════════════════════ */
+  .profil-wrap{max-width:460px;margin:0 auto}
+  .profil-card{background:var(--card);border:1.5px solid var(--border);border-radius:20px;overflow:hidden;box-shadow:var(--sh)}
+  .profil-hdr{height:100px;background:linear-gradient(135deg,var(--brown),var(--rust) 60%,var(--gold));position:relative}
+  .profil-avatar-wrap{position:absolute;bottom:-42px;left:50%;transform:translateX(-50%)}
+  .profil-avatar{width:84px;height:84px;border-radius:50%;border:4px solid var(--card);background:linear-gradient(135deg,var(--gold-lt),var(--gold));display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(59,42,26,.2)}
+  .profil-avatar i{font-size:2.6rem;color:var(--brown)}
+  .profil-body{padding:3rem 1.75rem 1.75rem;text-align:center}
+  .profil-nama{font-family:var(--fh);font-size:1.38rem;font-weight:900;color:var(--brown);margin-bottom:.2rem}
+  .profil-nis{display:inline-block;background:rgba(201,150,44,.12);color:var(--gold);border:1.5px solid rgba(201,150,44,.28);border-radius:20px;padding:.22rem .8rem;font-size:.78rem;font-weight:700;letter-spacing:.06em;margin-bottom:1.4rem}
+  .profil-grid{display:grid;grid-template-columns:1fr 1fr;gap:.85rem;text-align:left}
+  .profil-item{background:var(--cream);border:1px solid var(--border);border-radius:11px;padding:.75rem .9rem}
+  .profil-lbl{font-size:.7rem;font-weight:700;letter-spacing:.06em;color:#9a8070;text-transform:uppercase;margin-bottom:.2rem}
+  .profil-val{font-size:.92rem;font-weight:600;color:var(--brown)}
+
+  /* ═══════════════════════════════════════
+     TOAST
+  ═══════════════════════════════════════ */
+  #toast-wrap{position:fixed;top:1.2rem;right:1.2rem;z-index:9999;display:flex;flex-direction:column;gap:.45rem}
+  .toast-item{min-width:270px;background:var(--brown);color:#fff;padding:.8rem 1.15rem;border-radius:10px;font-size:.86rem;display:flex;align-items:center;gap:.6rem;box-shadow:0 8px 24px rgba(0,0,0,.24);animation:tIn .3s ease forwards}
+  .toast-item.success{border-left:4px solid var(--green)}
+  .toast-item.error{border-left:4px solid var(--red)}
+  .toast-item.info{border-left:4px solid var(--gold)}
+  .toast-item.out{animation:tOut .3s ease forwards}
+  @keyframes tIn{from{opacity:0;transform:translateX(48px)}to{opacity:1;transform:translateX(0)}}
+  @keyframes tOut{from{opacity:1;transform:translateX(0)}to{opacity:0;transform:translateX(48px)}}
+  </style>
+</head>
+<body>
+
+<div id="toast-wrap"></div>
+
+<!-- ═══════════════════════════════════════════════
+     MODAL: LOGIN
+═══════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-login">
+  <div class="modal-box">
+    <button class="modal-close" id="close-login">✕</button>
+    <div class="modal-icon"><i class="fas fa-sign-in-alt"></i></div>
+    <div class="modal-title">Masuk</div>
+    <p class="modal-sub">Gunakan NIS kamu untuk masuk</p>
+    <div class="form-group">
+      <label class="form-label">NOMOR INDUK SISWA (NIS)</label>
+      <input id="inp-nis" class="form-control" type="text" placeholder="Contoh: 10461" maxlength="10"/>
+      <div class="err-msg" id="login-err"></div>
+    </div>
+    <button class="btn-modal-primary" id="btn-masuk">Masuk</button>
+    <div class="modal-switch">Belum terdaftar? <a id="to-daftar">Daftar di sini</a></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     MODAL: DAFTAR
+═══════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-daftar">
+  <div class="modal-box">
+    <button class="modal-close" id="close-daftar">✕</button>
+    <div class="modal-icon" style="background:linear-gradient(135deg,var(--green),#1a4535)"><i class="fas fa-user-plus"></i></div>
+    <div class="modal-title">Daftar</div>
+    <p class="modal-sub">Masukkan NIS untuk mendaftarkan akun</p>
+    <div class="form-group">
+      <label class="form-label">NOMOR INDUK SISWA (NIS)</label>
+      <input id="inp-nis-daftar" class="form-control" type="text" placeholder="Contoh: 10461" maxlength="10"/>
+      <div class="err-msg" id="daftar-err"></div>
+      <div class="ok-msg"  id="daftar-ok"></div>
+    </div>
+    <button class="btn-modal-primary" id="btn-daftar" style="background:linear-gradient(135deg,var(--green),#1a4535)">Daftar & Masuk</button>
+    <div class="modal-switch">Sudah punya akun? <a id="to-login">Masuk di sini</a></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     MODAL: KONFIRMASI PINJAM
+═══════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-confirm">
+  <div class="modal-box">
+    <h5 style="font-family:var(--fh);font-size:1.18rem;margin-bottom:.4rem"><i class="fas fa-book-open" style="color:var(--gold);margin-right:.45rem"></i>Konfirmasi Peminjaman</h5>
+    <p style="color:#9a8070;font-size:.85rem">Apakah kamu yakin ingin meminjam buku ini?</p>
+    <div class="modal-info">
+      <div class="bk" id="m-judul">—</div>
+      <span id="m-kode">—</span><br><span id="m-tanggal">—</span>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" id="btn-batal">Batal</button>
+      <button class="btn-confirm" id="btn-ya-pinjam">Ya, Pinjam</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     MODAL: DETAIL BERITA
+═══════════════════════════════════════════════ -->
+<div class="berita-overlay" id="berita-overlay">
+  <div class="berita-detail-box">
+    <button class="btn-tutup" id="btn-tutup-berita"><i class="fas fa-arrow-left"></i> Kembali</button>
+    <div class="bd-tag" id="bd-tag">—</div>
+    <div class="bd-judul" id="bd-judul">—</div>
+    <div class="bd-meta"  id="bd-meta">—</div>
+    <div class="bd-body"  id="bd-body">—</div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     PAGE 1: BERANDA (publik)
+═══════════════════════════════════════════════ -->
+<div id="page-beranda" class="page active">
+  <!-- Navbar publik -->
+  <nav class="app-nav" id="nav-beranda">
+    <a class="nav-brand" href="#"><div class="nav-brand-icon"><i class="fas fa-book-open"></i></div><span class="nav-brand-text">SiPustaka</span></a>
+    <!-- Desktop -->
+    <div class="nav-center">
+      <button class="nav-link" id="dnb-berita"><i class="fas fa-newspaper"></i> Berita</button>
+    </div>
+    <div class="nav-right">
+      <button class="nav-link" id="dnb-login" style="background:rgba(201,150,44,.18);color:var(--gold-lt)"><i class="fas fa-sign-in-alt"></i> Masuk</button>
+      <button class="nav-link" id="dnb-daftar" style="background:linear-gradient(135deg,var(--gold),var(--rust));color:#fff;padding:.42rem 1rem"><i class="fas fa-user-plus"></i> Daftar</button>
+    </div>
+    <!-- Mobile hamburger -->
+    <button class="btn-hamburger" id="ham-beranda"><span></span><span></span><span></span></button>
+    <div class="nav-dropdown" id="dd-beranda">
+      <div class="dd-item" data-dd="berita-pub"><i class="fas fa-newspaper"></i> Berita</div>
+      <div class="dd-item" data-dd="login"><i class="fas fa-sign-in-alt"></i> Masuk</div>
+      <div class="dd-item" data-dd="daftar"><i class="fas fa-user-plus"></i> Daftar</div>
+    </div>
+  </nav>
+
+  <!-- Scrollable content -->
+  <div class="page-body" style="padding:0">
+    <!-- Hero -->
+    <div class="hero">
+      <div class="hero-inner">
+        <div class="hero-badge"><i class="fas fa-star" style="margin-right:.35rem"></i>Perpustakaan Digital SMAN 1 Kutowinangun</div>
+        <h1>Selamat Datang di <span style="color:var(--gold-lt)">SiPustaka</span></h1>
+        <p>Platform peminjaman buku sekolah yang mudah, cepat, dan menyenangkan. Temukan ribuan buku dan kelola pinjaman kamu kapan saja.</p>
+        <div class="hero-actions">
+          <button class="btn-hero-primary" id="hero-mulai"><i class="fas fa-rocket"></i> Mulai Sekarang</button>
+          <button class="btn-hero-ghost" id="hero-berita"><i class="fas fa-newspaper"></i> Baca Berita</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-strip">
+      <div class="stat-item"><div class="stat-num">36</div><div class="stat-lbl">Siswa Terdaftar</div></div>
+      <div class="stat-item"><div class="stat-num">8+</div><div class="stat-lbl">Koleksi Buku</div></div>
+      <div class="stat-item"><div class="stat-num">5</div><div class="stat-lbl">Berita Literasi</div></div>
+      <div class="stat-item"><div class="stat-num">0</div><div class="stat-lbl">Denda Hari Ini</div></div>
+    </div>
+
+    <!-- Berita preview -->
+    <div style="padding:2rem 1.5rem">
+      <div class="inner">
+        <div class="section-title"><i class="fas fa-newspaper" style="color:var(--gold)"></i> Berita Terkini</div>
+        <div class="berita-grid" id="beranda-berita-grid"></div>
+        <div style="text-align:center;margin-top:.5rem">
+          <button class="btn-hero-ghost" id="semua-berita" style="border-color:var(--border);color:var(--brown);margin:0 auto"><i class="fas fa-list"></i> Lihat Semua Berita</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     PAGE 2: DASHBOARD (setelah login)
+═══════════════════════════════════════════════ -->
+<div id="page-dashboard" class="page">
+  <nav class="app-nav" id="nav-dash">
+    <a class="nav-brand" href="#"><div class="nav-brand-icon"><i class="fas fa-book-open"></i></div><span class="nav-brand-text">SiPustaka</span></a>
+    <!-- Desktop -->
+    <div class="nav-center">
+      <button class="nav-link active-link" id="dnav-beranda"><i class="fas fa-home"></i> Beranda</button>
+      <button class="nav-link" id="dnav-berita"><i class="fas fa-newspaper"></i> Berita</button>
+    </div>
+    <div class="nav-right">
+      <div class="nav-avatar-btn" id="dnav-profil" title="Profil"><i class="fas fa-user"></i></div>
+      <button class="btn-nav-logout" id="dnav-logout"><i class="fas fa-sign-out-alt"></i> Keluar</button>
+    </div>
+    <!-- Mobile hamburger -->
+    <button class="btn-hamburger" id="ham-dash"><span></span><span></span><span></span></button>
+    <div class="nav-dropdown" id="dd-dash">
+      <div class="dd-item" data-dd="beranda-user"><i class="fas fa-home"></i> Beranda</div>
+      <div class="dd-item" data-dd="berita-user"><i class="fas fa-newspaper"></i> Berita</div>
+      <div class="dd-item" data-dd="profil"><i class="fas fa-user-circle"></i> Profil</div>
+      <div class="dd-item danger" data-dd="logout"><i class="fas fa-sign-out-alt"></i> Keluar</div>
+    </div>
+  </nav>
+  <div class="page-body">
+    <div class="inner">
+      <div class="dash-welcome">
+        <h2>Halo, <span id="dash-nama" class="text-gold">—</span> 👋</h2>
+        <p>Silakan pilih menu di bawah ini untuk memulai.</p>
+      </div>
+      <div class="menu-grid">
+        <div class="menu-card" id="menu-pinjam">
+          <div class="menu-icon borrow"><i class="fas fa-hand-holding-heart"></i></div>
+          <h4>Meminjam Buku</h4>
+          <p>Lihat katalog buku dan ajukan peminjaman</p>
+        </div>
+        <div class="menu-card" id="menu-kembali">
+          <div class="menu-icon ret"><i class="fas fa-undo-alt"></i></div>
+          <h4>Mengembalikan Buku</h4>
+          <p>Kembalikan buku dan cek denda keterlambatan</p>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-header"><h5><i class="fas fa-list-ul" style="color:var(--gold);margin-right:.45rem"></i>Peminjaman Aktif Saya</h5></div>
+        <div class="panel-body" id="aktif-wrap"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     PAGE 3: PINJAM
+═══════════════════════════════════════════════ -->
+<div id="page-pinjam" class="page">
+  <nav class="app-nav" id="nav-pinjam">
+    <a class="nav-brand" href="#"><div class="nav-brand-icon"><i class="fas fa-book-open"></i></div><span class="nav-brand-text">SiPustaka</span></a>
+    <div class="nav-center">
+      <button class="nav-link" id="pnav-beranda"><i class="fas fa-home"></i> Beranda</button>
+      <button class="nav-link" id="pnav-berita"><i class="fas fa-newspaper"></i> Berita</button>
+    </div>
+    <div class="nav-right">
+      <div class="nav-avatar-btn" id="pnav-profil" title="Profil"><i class="fas fa-user"></i></div>
+      <button class="btn-nav-logout" id="pnav-logout"><i class="fas fa-sign-out-alt"></i> Keluar</button>
+    </div>
+    <button class="btn-hamburger" id="ham-pinjam"><span></span><span></span><span></span></button>
+    <div class="nav-dropdown" id="dd-pinjam">
+      <div class="dd-item" data-dd="beranda-user"><i class="fas fa-home"></i> Beranda</div>
+      <div class="dd-item" data-dd="berita-user"><i class="fas fa-newspaper"></i> Berita</div>
+      <div class="dd-item" data-dd="profil"><i class="fas fa-user-circle"></i> Profil</div>
+      <div class="dd-item danger" data-dd="logout"><i class="fas fa-sign-out-alt"></i> Keluar</div>
+    </div>
+  </nav>
+  <div class="page-body">
+    <div class="inner">
+      <div class="panel">
+        <div class="panel-header">
+          <h5><i class="fas fa-hand-holding-heart" style="color:var(--gold);margin-right:.45rem"></i>Daftar Buku Tersedia</h5>
+          <button class="btn-back" id="btn-back-pinjam"><i class="fas fa-arrow-left"></i> Kembali</button>
+        </div>
+        <div class="panel-body" style="overflow-x:auto">
+          <table class="book-table">
+            <thead><tr><th>Kode</th><th>Judul Buku</th><th>Stok</th><th>Aksi</th></tr></thead>
+            <tbody id="tbody-buku"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     PAGE 4: KEMBALI
+═══════════════════════════════════════════════ -->
+<div id="page-kembali" class="page">
+  <nav class="app-nav" id="nav-kembali">
+    <a class="nav-brand" href="#"><div class="nav-brand-icon"><i class="fas fa-book-open"></i></div><span class="nav-brand-text">SiPustaka</span></a>
+    <div class="nav-center">
+      <button class="nav-link" id="knav-beranda"><i class="fas fa-home"></i> Beranda</button>
+      <button class="nav-link" id="knav-berita"><i class="fas fa-newspaper"></i> Berita</button>
+    </div>
+    <div class="nav-right">
+      <div class="nav-avatar-btn" id="knav-profil" title="Profil"><i class="fas fa-user"></i></div>
+      <button class="btn-nav-logout" id="knav-logout"><i class="fas fa-sign-out-alt"></i> Keluar</button>
+    </div>
+    <button class="btn-hamburger" id="ham-kembali"><span></span><span></span><span></span></button>
+    <div class="nav-dropdown" id="dd-kembali">
+      <div class="dd-item" data-dd="beranda-user"><i class="fas fa-home"></i> Beranda</div>
+      <div class="dd-item" data-dd="berita-user"><i class="fas fa-newspaper"></i> Berita</div>
+      <div class="dd-item" data-dd="profil"><i class="fas fa-user-circle"></i> Profil</div>
+      <div class="dd-item danger" data-dd="logout"><i class="fas fa-sign-out-alt"></i> Keluar</div>
+    </div>
+  </nav>
+  <div class="page-body">
+    <div class="inner">
+      <div class="panel">
+        <div class="panel-header">
+          <h5><i class="fas fa-undo-alt" style="color:var(--gold);margin-right:.45rem"></i>Pengembalian Buku</h5>
+          <button class="btn-back" id="btn-back-kembali"><i class="fas fa-arrow-left"></i> Kembali</button>
+        </div>
+        <div class="panel-body">
+          <div class="return-form">
+            <label class="form-label">KODE BUKU</label>
+            <div class="input-row">
+              <input id="inp-kode" class="form-control" type="text" placeholder="Contoh: BK001"/>
+              <button class="btn-cari" id="btn-cari"><i class="fas fa-search" style="margin-right:.3rem"></i>Cari</button>
+            </div>
+            <div id="result-card" class="result-card">
+              <div class="result-row"><span class="result-label">Nama Siswa</span><span class="result-value" id="r-nama">—</span></div>
+              <div class="result-row"><span class="result-label">NIS</span><span class="result-value" id="r-nis">—</span></div>
+              <div class="result-row"><span class="result-label">Judul Buku</span><span class="result-value" id="r-judul">—</span></div>
+              <div class="result-row"><span class="result-label">Tanggal Pinjam</span><span class="result-value" id="r-tgl-pinjam">—</span></div>
+              <div class="result-row"><span class="result-label">Batas Kembali</span><span class="result-value" id="r-tgl-batas">—</span></div>
+              <div class="result-row"><span class="result-label">Keterlambatan</span><span class="result-value" id="r-terlambat">—</span></div>
+              <div class="result-row" style="margin-top:.45rem;padding-top:.7rem;border-top:2px solid var(--border)">
+                <span class="result-label" style="font-weight:700">Total Denda</span>
+                <span class="result-value" id="r-denda">—</span>
+              </div>
+              <button class="btn-konfirmasi" id="btn-konfirmasi-kembali"><i class="fas fa-check-circle" style="margin-right:.45rem"></i>Konfirmasi Pengembalian</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     PAGE 5: PROFIL
+═══════════════════════════════════════════════ -->
+<div id="page-profil" class="page">
+  <nav class="app-nav" id="nav-profil">
+    <a class="nav-brand" href="#"><div class="nav-brand-icon"><i class="fas fa-book-open"></i></div><span class="nav-brand-text">SiPustaka</span></a>
+    <div class="nav-center">
+      <button class="nav-link" id="pronav-beranda"><i class="fas fa-home"></i> Beranda</button>
+      <button class="nav-link" id="pronav-berita"><i class="fas fa-newspaper"></i> Berita</button>
+    </div>
+    <div class="nav-right">
+      <div class="nav-avatar-btn active-link" title="Profil"><i class="fas fa-user"></i></div>
+      <button class="btn-nav-logout" id="pronav-logout"><i class="fas fa-sign-out-alt"></i> Keluar</button>
+    </div>
+    <button class="btn-hamburger" id="ham-profil"><span></span><span></span><span></span></button>
+    <div class="nav-dropdown" id="dd-profil">
+      <div class="dd-item" data-dd="beranda-user"><i class="fas fa-home"></i> Beranda</div>
+      <div class="dd-item" data-dd="berita-user"><i class="fas fa-newspaper"></i> Berita</div>
+      <div class="dd-item" data-dd="profil"><i class="fas fa-user-circle"></i> Profil</div>
+      <div class="dd-item danger" data-dd="logout"><i class="fas fa-sign-out-alt"></i> Keluar</div>
+    </div>
+  </nav>
+  <div class="page-body">
+    <div class="inner">
+      <div style="display:flex;align-items:center;gap:.7rem;margin-bottom:1.4rem">
+        <button class="btn-back" id="btn-back-profil"><i class="fas fa-arrow-left"></i> Kembali</button>
+        <span style="font-family:var(--fh);font-size:1.05rem">Profil Saya</span>
+      </div>
+      <div class="profil-wrap">
+        <div class="profil-card">
+          <div class="profil-hdr">
+            <div class="profil-avatar-wrap">
+              <div class="profil-avatar"><i class="fas fa-user-graduate"></i></div>
+            </div>
+          </div>
+          <div class="profil-body">
+            <div class="profil-nama" id="profil-nama">—</div>
+            <div class="profil-nis" id="profil-nis-badge">NIS —</div>
+            <div class="profil-grid">
+              <div class="profil-item"><div class="profil-lbl"><i class="fas fa-id-card" style="margin-right:.28rem"></i>NIS</div><div class="profil-val" id="profil-nis-val">—</div></div>
+              <div class="profil-item"><div class="profil-lbl"><i class="fas fa-chalkboard-teacher" style="margin-right:.28rem"></i>Kelas</div><div class="profil-val">X.E5</div></div>
+              <div class="profil-item" style="grid-column:1/-1"><div class="profil-lbl"><i class="fas fa-school" style="margin-right:.28rem"></i>Sekolah</div><div class="profil-val">SMAN 1 KUTOWINANGUN</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     PAGE 6: BERITA (full)
+═══════════════════════════════════════════════ -->
+<div id="page-berita" class="page">
+  <nav class="app-nav" id="nav-berita">
+    <a class="nav-brand" href="#"><div class="nav-brand-icon"><i class="fas fa-book-open"></i></div><span class="nav-brand-text">SiPustaka</span></a>
+    <!-- desktop — will be filled dynamically based on login state -->
+    <div class="nav-center" id="berita-nav-center"></div>
+    <div class="nav-right"  id="berita-nav-right"></div>
+    <button class="btn-hamburger" id="ham-berita"><span></span><span></span><span></span></button>
+    <div class="nav-dropdown" id="dd-berita"></div>
+  </nav>
+  <div class="page-body">
+    <div class="inner">
+      <div style="display:flex;align-items:center;gap:.7rem;margin-bottom:1.4rem">
+        <button class="btn-back" id="btn-back-berita"><i class="fas fa-arrow-left"></i> Kembali</button>
+        <span style="font-family:var(--fh);font-size:1.05rem">Berita Literasi</span>
+      </div>
+      <div class="berita-grid" id="berita-full-grid"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Firebase Compat -->
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<script>
+/* ═════════════════════════════════════
+   FIREBASE
+═════════════════════════════════════ */
+var db = null;
+try {
+  firebase.initializeApp({
+    apiKey:"AIzaSyAOQUxBnM4D5Z6NOFWIyXLuUt1dC-kBkeo",
+    authDomain:"pustaka-93626.firebaseapp.com",
+    projectId:"pustaka-93626",
+    storageBucket:"pustaka-93626.firebasestorage.app",
+    messagingSenderId:"833305723482",
+    appId:"1:833305723482:web:07b5b4dce4264ca0d70e63"
+  });
+  db = firebase.firestore();
+} catch(e){ console.warn('Firebase:',e.message); }
+
+/* ═════════════════════════════════════
+   DATA SISWA
+═════════════════════════════════════ */
+var SISWA=[
+  {nis:'10461',nama:'Adinda Shabrina Ghaisani'},
+  {nis:'10469',nama:'Ahmad Zaki Nur Fitriadi'},
+  {nis:'10475',nama:'Alfaizza Shafarani'},
+  {nis:'10488',nama:'Amalina Huril Ain'},
+  {nis:'10501',nama:'Artika Althaaf Oktavia'},
+  {nis:'10520',nama:'Azzah Maiza Tsabita'},
+  {nis:'10524',nama:'Bayu Diza Afif Pratama'},
+  {nis:'10525',nama:'Beauty Kasacima Raya'},
+  {nis:'10543',nama:'Desfita Amira Tungga Dewi'},
+  {nis:'10551',nama:'Diana Larasati Puspita Ningrum'},
+  {nis:'10562',nama:'Duta Urban Harum'},
+  {nis:'10565',nama:'Dyah Palupi Kusumaningrum'},
+  {nis:'10576',nama:'Evelyna Zazkia Rakhma'},
+  {nis:'10588',nama:'Fatur Rohman'},
+  {nis:'10600',nama:"Hafiyatun Ni'mah"},
+  {nis:'10613',nama:'Ida Sherlya Yuanita'},
+  {nis:'10615',nama:'Ihsan Kamil Alfahd'},
+  {nis:'10624',nama:'Izziany Riskia Ramadani'},
+  {nis:'10632',nama:'Kevin Cahya Ardyanta'},
+  {nis:'10636',nama:'Khansa Emma Kinasih'},
+  {nis:'10651',nama:'Malihatun Nisa'},
+  {nis:'10670',nama:'Muhammad Arfa Abdullah'},
+  {nis:'10677',nama:'Muhammad Qyanu Athaya Kamil'},
+  {nis:'10684',nama:'Nabila Alfha Ufairah'},
+  {nis:'10694',nama:'Najla Audra Awaliyah'},
+  {nis:'10700',nama:'Nathan Huda Assidqi'},
+  {nis:'10718',nama:'Putri Aulia Zahra'},
+  {nis:'10731',nama:'Riska Zahrotus Zamaniyah'},
+  {nis:'10745',nama:'Sagita Aulia Rizki Saputri'},
+  {nis:'10756',nama:'Sheza Zazkiya Safaraeni'},
+  {nis:'10766',nama:"Syafa'ati Tri Utami"},
+  {nis:'10777',nama:"Thorikhul Huda Assya'bani"},
+  {nis:'10778',nama:'Tiara Larasati'},
+  {nis:'10787',nama:'Vindi Setyaningsih'},
+  {nis:'10797',nama:'Zahra Kamilah Zein'},
+  {nis:'10803',nama:'Zefanya Andrea Wardani'}
+];
+
+var BUKU=[
+  {kode:'BK001',judul:'Laskar Pelangi',stok:3},
+  {kode:'BK002',judul:'Bumi Manusia',stok:2},
+  {kode:'BK003',judul:'Sang Pemimpi',stok:4},
+  {kode:'BK004',judul:'Negeri 5 Menara',stok:2},
+  {kode:'BK005',judul:'Perahu Kertas',stok:0},
+  {kode:'BK006',judul:'Ayat-Ayat Cinta',stok:1},
+  {kode:'BK007',judul:'Dilan: Dia Adalah Dilanku',stok:3},
+  {kode:'BK008',judul:'Pulang — Tere Liye',stok:2}
+];
+
+var BERITA=[
+  {id:1,tag:'Literasi',thumb:'t1',icon:'fa-book-reader',judul:'Gerakan Membaca 15 Menit Sehari Terbukti Tingkatkan Prestasi Siswa',ringkas:'Penelitian terbaru menunjukkan kebiasaan membaca 15 menit sehari secara konsisten dapat meningkatkan nilai akademik siswa hingga 23%.',tanggal:'5 Mei 2025',isi:'<p>Sebuah penelitian yang dilakukan oleh Pusat Literasi Nasional Indonesia menunjukkan hasil menggembirakan bahwa kebiasaan membaca selama 15 menit setiap hari secara konsisten mampu meningkatkan nilai akademik siswa hingga 23 persen dalam kurun waktu satu semester.</p><p>Studi yang melibatkan lebih dari 2.000 siswa SMA di seluruh Indonesia ini menemukan bahwa siswa yang rutin membaca menunjukkan kemampuan pemahaman bacaan, kosakata, dan kemampuan berpikir kritis yang jauh lebih baik dibandingkan rekan-rekan mereka yang jarang membaca.</p><p>"Tidak perlu waktu yang lama. Yang terpenting adalah konsistensi. Lima belas menit setiap hari jauh lebih efektif daripada membaca dua jam hanya di akhir pekan," ungkap Dr. Hendra Wijaya, peneliti utama dari studi tersebut.</p>'},
+  {id:2,tag:'Perpustakaan',thumb:'t2',icon:'fa-building-columns',judul:'SMAN 1 Kutowinangun Raih Penghargaan Perpustakaan Terbaik Se-Kabupaten',ringkas:'Perpustakaan SMAN 1 Kutowinangun berhasil meraih penghargaan perpustakaan sekolah terbaik tingkat Kabupaten Kebumen tahun 2025.',tanggal:'28 Apr 2025',isi:'<p>Kabar membanggakan datang dari SMAN 1 Kutowinangun. Perpustakaan sekolah ini berhasil meraih penghargaan sebagai Perpustakaan Sekolah Terbaik tingkat Kabupaten Kebumen tahun 2025.</p><p>Penilaian dilakukan berdasarkan sejumlah kriteria, mulai dari kelengkapan koleksi buku, sistem pengelolaan perpustakaan, tingkat kunjungan siswa, hingga inovasi layanan yang ditawarkan. SMAN 1 Kutowinangun unggul di hampir semua aspek penilaian.</p><p>Kepala sekolah menyampaikan rasa bangga dan terima kasih kepada seluruh tim perpustakaan dan siswa yang telah aktif menggunakan fasilitas perpustakaan.</p>'},
+  {id:3,tag:'Program',thumb:'t3',icon:'fa-star',judul:'Program "Satu Siswa Satu Buku" Resmi Diluncurkan di Perpustakaan',ringkas:'Perpustakaan sekolah meluncurkan program donasi buku yang mengajak setiap siswa menyumbangkan satu buku layak baca.',tanggal:'20 Apr 2025',isi:'<p>Perpustakaan SMAN 1 Kutowinangun secara resmi meluncurkan program "Satu Siswa Satu Buku" pada Senin, 20 April 2025. Program ini merupakan inisiatif untuk memperkaya koleksi perpustakaan sekaligus menumbuhkan rasa memiliki siswa terhadap fasilitas sekolah.</p><p>Dalam dua minggu pertama, program ini telah berhasil mengumpulkan lebih dari 180 buku dari berbagai kelas. "Antusias siswa sangat luar biasa," ujar koordinator perpustakaan.</p>'},
+  {id:4,tag:'Teknologi',thumb:'t4',icon:'fa-mobile-screen',judul:'SiPustaka: Inovasi Digital untuk Kemudahan Layanan Perpustakaan Sekolah',ringkas:'Sistem informasi perpustakaan berbasis web kini hadir untuk memudahkan siswa meminjam dan mengembalikan buku tanpa antrean panjang.',tanggal:'12 Apr 2025',isi:'<p>Era digitalisasi telah menyentuh berbagai aspek kehidupan, termasuk pengelolaan perpustakaan sekolah. SMAN 1 Kutowinangun kini telah menghadirkan SiPustaka — Sistem Informasi Perpustakaan berbasis web yang memudahkan siswa dalam mengakses layanan perpustakaan kapan saja dan di mana saja.</p><p>Dengan SiPustaka, siswa cukup membuka aplikasi melalui perangkat masing-masing, memasukkan NIS, lalu memilih buku yang ingin dipinjam. Proses yang dulunya memerlukan antrean kini bisa dilakukan hanya dalam hitungan detik.</p>'},
+  {id:5,tag:'Kegiatan',thumb:'t5',icon:'fa-trophy',judul:'Lomba Resensi Buku Antar Kelas: Bangkitkan Semangat Literasi Generasi Muda',ringkas:'Memperingati Hari Pendidikan Nasional, perpustakaan menyelenggarakan lomba resensi buku yang diikuti seluruh kelas.',tanggal:'2 Mei 2025',isi:'<p>Dalam rangka memperingati Hari Pendidikan Nasional, perpustakaan SMAN 1 Kutowinangun menyelenggarakan Lomba Resensi Buku Antar Kelas yang diikuti oleh perwakilan dari seluruh kelas X, XI, dan XII.</p><p>Lomba ini bertujuan untuk menumbuhkan budaya membaca dan berpikir kritis di kalangan siswa. Peserta diwajibkan membaca satu buku pilihan dari koleksi perpustakaan, kemudian menulis resensi berupa ulasan isi, kelebihan, kekurangan, dan rekomendasi buku tersebut.</p>'}
+];
+
+/* ═════════════════════════════════════
+   APP STATE
+═════════════════════════════════════ */
+var currentUser   = null;
+var selectedBuku  = null;
+var foundRecord   = null;
+var peminjamanList= [];
+var prevPage      = 'page-dashboard';
+
+/* ═════════════════════════════════════
+   HELPERS
+═════════════════════════════════════ */
+var BULAN=['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+function fmt(d){if(!d)return'—';var dt=d instanceof Date?d:new Date(d);return dt.getDate()+' '+BULAN[dt.getMonth()]+' '+dt.getFullYear();}
+function tambah7(d){var r=new Date(d);r.setDate(r.getDate()+7);return r;}
+function selisih(a,b){return Math.floor((new Date(b)-new Date(a))/864e5);}
+function rp(n){return'Rp '+Number(n).toLocaleString('id-ID');}
+function genId(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
+
+function toast(msg,type){
+  type=type||'success';
+  var ic={success:'fa-check-circle',error:'fa-times-circle',info:'fa-info-circle'};
+  var el=document.createElement('div');
+  el.className='toast-item '+type;
+  el.innerHTML='<i class="fas '+(ic[type]||'fa-info-circle')+'"></i> '+msg;
+  document.getElementById('toast-wrap').appendChild(el);
+  setTimeout(function(){el.classList.add('out');setTimeout(function(){el.remove();},350);},3500);
+}
+
+function goTo(id,cb){
+  document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active');});
+  document.getElementById(id).classList.add('active');
+  var b=document.querySelector('#'+id+' .page-body');
+  if(b)b.scrollTop=0;
+  tutupDD();
+  if(typeof cb==='function')cb();
+}
+
+/* ═════════════════════════════════════
+   SESSION (localStorage)
+═════════════════════════════════════ */
+function saveSession(siswa){
+  try{ localStorage.setItem('sipustaka_user', JSON.stringify(siswa)); }catch(e){}
+}
+function loadSession(){
+  try{
+    var raw=localStorage.getItem('sipustaka_user');
+    if(raw){ var s=JSON.parse(raw); if(s&&s.nis&&s.nama)return s; }
+  }catch(e){}
+  return null;
+}
+function clearSession(){ try{localStorage.removeItem('sipustaka_user');}catch(e){} }
+
+/* Simpan & muat data peminjaman (persisten seperti session) */
+function savePeminjaman(){
+  try{
+    /* Simpan tanggal sebagai string ISO supaya JSON.parse bisa baca balik */
+    var data=peminjamanList.map(function(p){
+      return {id:p.id,nis:p.nis,kode:p.kode,judul:p.judul,
+              tglPinjam:p.tglPinjam instanceof Date?p.tglPinjam.toISOString():p.tglPinjam,
+              tglKembali:p.tglKembali instanceof Date?p.tglKembali.toISOString():p.tglKembali,
+              selesai:p.selesai};
+    });
+    localStorage.setItem('sipustaka_peminjaman',JSON.stringify(data));
+  }catch(e){}
+}
+function loadPeminjaman(){
+  try{
+    var raw=localStorage.getItem('sipustaka_peminjaman');
+    if(raw){
+      var arr=JSON.parse(raw);
+      /* Konversi string ISO kembali ke Date & rekonstruksi stok buku */
+      arr.forEach(function(p){
+        p.tglPinjam=new Date(p.tglPinjam);
+        p.tglKembali=new Date(p.tglKembali);
+      });
+      return arr;
+    }
+  }catch(e){}
+  return [];
+}
+function clearPeminjaman(){ try{localStorage.removeItem('sipustaka_peminjaman');}catch(e){} }
+
+/* Sinkronisasi stok BUKU[] berdasarkan peminjaman aktif yg tersimpan */
+function syncStokDariPeminjaman(){
+  /* Reset stok ke nilai default */
+  var DEFAULT_STOK={BK001:3,BK002:2,BK003:4,BK004:2,BK005:0,BK006:1,BK007:3,BK008:2};
+  BUKU.forEach(function(b){ b.stok=DEFAULT_STOK[b.kode]!==undefined?DEFAULT_STOK[b.kode]:b.stok; });
+  /* Kurangi stok untuk setiap peminjaman yang masih aktif */
+  peminjamanList.forEach(function(p){
+    if(!p.selesai){
+      for(var i=0;i<BUKU.length;i++){
+        if(BUKU[i].kode===p.kode){ BUKU[i].stok=Math.max(0,BUKU[i].stok-1); break; }
+      }
+    }
+  });
+}
+
+/* ═════════════════════════════════════
+   HAMBURGER / DROPDOWN
+═════════════════════════════════════ */
+function tutupDD(){ document.querySelectorAll('.nav-dropdown').forEach(function(d){d.classList.remove('open');}); }
+document.addEventListener('click',tutupDD);
+
+function setupHam(hamId,ddId){
+  var btn=document.getElementById(hamId);
+  if(!btn)return;
+  btn.addEventListener('click',function(e){
+    e.stopPropagation();
+    var dd=document.getElementById(ddId);
+    var open=dd.classList.contains('open');
+    tutupDD();
+    if(!open)dd.classList.add('open');
+  });
+}
+setupHam('ham-beranda','dd-beranda');
+setupHam('ham-dash','dd-dash');
+setupHam('ham-pinjam','dd-pinjam');
+setupHam('ham-kembali','dd-kembali');
+setupHam('ham-profil','dd-profil');
+setupHam('ham-berita','dd-berita');
+
+function handleDD(action){
+  tutupDD();
+  if(action==='login')      { bukaLogin(); }
+  else if(action==='daftar'){ bukaDaftar(); }
+  else if(action==='berita-pub') { bukaBerita(false); }
+  else if(action==='beranda-user'){ goTo('page-dashboard',renderAktif); }
+  else if(action==='berita-user') { bukaBerita(true); }
+  else if(action==='profil') { bukaProfil(); }
+  else if(action==='logout') { doLogout(); }
+}
+
+document.querySelectorAll('.dd-item[data-dd]').forEach(function(item){
+  item.addEventListener('click',function(e){e.stopPropagation();handleDD(item.getAttribute('data-dd'));});
+});
+
+/* ═════════════════════════════════════
+   BERITA HALAMAN
+═════════════════════════════════════ */
+function buildBeritaCard(b){
+  return '<div class="berita-card" data-bid="'+b.id+'">'
+    +'<div class="berita-thumb '+b.thumb+'"><i class="fas '+b.icon+'"></i></div>'
+    +'<div class="berita-body">'
+    +'<div class="berita-tag">'+b.tag+'</div>'
+    +'<div class="berita-judul">'+b.judul+'</div>'
+    +'<div class="berita-ringkas">'+b.ringkas+'</div>'
+    +'<div class="berita-date"><i class="fas fa-calendar-alt" style="margin-right:.28rem"></i>'+b.tanggal+'</div>'
+    +'</div></div>';
+}
+
+function attachBeritaClick(container){
+  container.querySelectorAll('.berita-card').forEach(function(c){
+    c.addEventListener('click',function(){bukaDetailBerita(parseInt(c.getAttribute('data-bid')));});
+  });
+}
+
+function renderBerandaBerita(){
+  var g=document.getElementById('beranda-berita-grid');
+  g.innerHTML=BERITA.slice(0,3).map(buildBeritaCard).join('');
+  attachBeritaClick(g);
+}
+
+function bukaBerita(isLoggedIn){
+  /* isi navbar berita sesuai status login */
+  var nc=document.getElementById('berita-nav-center');
+  var nr=document.getElementById('berita-nav-right');
+  var dd=document.getElementById('dd-berita');
+  if(isLoggedIn){
+    nc.innerHTML='<button class="nav-link" id="bnav-beranda"><i class="fas fa-home"></i> Beranda</button>'
+      +'<button class="nav-link active-link"><i class="fas fa-newspaper"></i> Berita</button>';
+    nr.innerHTML='<div class="nav-avatar-btn" id="bnav-profil" title="Profil"><i class="fas fa-user"></i></div>'
+      +'<button class="btn-nav-logout" id="bnav-logout"><i class="fas fa-sign-out-alt"></i> Keluar</button>';
+    dd.innerHTML='<div class="dd-item" data-dd="beranda-user"><i class="fas fa-home"></i> Beranda</div>'
+      +'<div class="dd-item" data-dd="berita-user"><i class="fas fa-newspaper"></i> Berita</div>'
+      +'<div class="dd-item" data-dd="profil"><i class="fas fa-user-circle"></i> Profil</div>'
+      +'<div class="dd-item danger" data-dd="logout"><i class="fas fa-sign-out-alt"></i> Keluar</div>';
+    var bb=document.getElementById('bnav-beranda');
+    if(bb)bb.addEventListener('click',function(){goTo('page-dashboard',renderAktif);});
+    var bp=document.getElementById('bnav-profil');
+    if(bp)bp.addEventListener('click',bukaProfil);
+    var bl=document.getElementById('bnav-logout');
+    if(bl)bl.addEventListener('click',doLogout);
+    dd.querySelectorAll('.dd-item[data-dd]').forEach(function(i){
+      i.addEventListener('click',function(e){e.stopPropagation();handleDD(i.getAttribute('data-dd'));});
+    });
+    prevPage='page-dashboard';
+  }else{
+    nc.innerHTML='<button class="nav-link active-link"><i class="fas fa-newspaper"></i> Berita</button>';
+    nr.innerHTML='<button class="nav-link" id="bnav-login" style="background:rgba(201,150,44,.18);color:var(--gold-lt)"><i class="fas fa-sign-in-alt"></i> Masuk</button>'
+      +'<button class="nav-link" id="bnav-daftar" style="background:linear-gradient(135deg,var(--gold),var(--rust));color:#fff;padding:.42rem 1rem"><i class="fas fa-user-plus"></i> Daftar</button>';
+    dd.innerHTML='<div class="dd-item" data-dd="login"><i class="fas fa-sign-in-alt"></i> Masuk</div>'
+      +'<div class="dd-item" data-dd="daftar"><i class="fas fa-user-plus"></i> Daftar</div>';
+    var bl2=document.getElementById('bnav-login'); if(bl2)bl2.addEventListener('click',bukaLogin);
+    var bd2=document.getElementById('bnav-daftar'); if(bd2)bd2.addEventListener('click',bukaDaftar);
+    dd.querySelectorAll('.dd-item[data-dd]').forEach(function(i){
+      i.addEventListener('click',function(e){e.stopPropagation();handleDD(i.getAttribute('data-dd'));});
+    });
+    prevPage='page-beranda';
+  }
+  var g=document.getElementById('berita-full-grid');
+  g.innerHTML=BERITA.map(buildBeritaCard).join('');
+  attachBeritaClick(g);
+  goTo('page-berita');
+}
+
+function bukaDetailBerita(id){
+  var b=null;
+  for(var i=0;i<BERITA.length;i++){if(BERITA[i].id===id){b=BERITA[i];break;}}
+  if(!b)return;
+  document.getElementById('bd-tag').textContent=b.tag;
+  document.getElementById('bd-judul').textContent=b.judul;
+  document.getElementById('bd-meta').innerHTML='<i class="fas fa-calendar-alt" style="margin-right:.3rem"></i>'+b.tanggal;
+  document.getElementById('bd-body').innerHTML=b.isi;
+  document.getElementById('berita-overlay').classList.add('show');
+}
+
+/* ═════════════════════════════════════
+   PROFIL
+═════════════════════════════════════ */
+function bukaProfil(){
+  var pages=['page-dashboard','page-pinjam','page-kembali','page-berita'];
+  for(var i=0;i<pages.length;i++){if(document.getElementById(pages[i]).classList.contains('active')){prevPage=pages[i];break;}}
+  goTo('page-profil');
+}
+
+/* ═════════════════════════════════════
+   LOGIN MODAL
+═════════════════════════════════════ */
+function bukaLogin(){
+  tutupDD();
+  document.getElementById('inp-nis').value='';
+  document.getElementById('login-err').style.display='none';
+  document.getElementById('modal-daftar').classList.remove('show');
+  document.getElementById('modal-login').classList.add('show');
+}
+function tutupLogin(){ document.getElementById('modal-login').classList.remove('show'); }
+
+function setUser(siswa){
+  currentUser=siswa;
+  saveSession(siswa);
+  document.getElementById('dash-nama').textContent=siswa.nama.split(' ')[0];
+  document.getElementById('profil-nama').textContent=siswa.nama;
+  document.getElementById('profil-nis-badge').textContent='NIS '+siswa.nis;
+  document.getElementById('profil-nis-val').textContent=siswa.nis;
+}
+
+function doLogin(){
+  var nis=document.getElementById('inp-nis').value.trim();
+  var err=document.getElementById('login-err');
+  err.style.display='none';
+  if(!nis){err.textContent='NIS tidak boleh kosong.';err.style.display='block';return;}
+  var siswa=null;
+  for(var i=0;i<SISWA.length;i++){if(SISWA[i].nis===nis){siswa=SISWA[i];break;}}
+  if(!siswa){err.textContent='NIS tidak ditemukan.';err.style.display='block';return;}
+  setUser(siswa);
+  tutupLogin();
+  goTo('page-dashboard',renderAktif);
+  toast('Selamat datang, '+siswa.nama.split(' ')[0]+'! 👋','success');
+}
+
+/* ═════════════════════════════════════
+   DAFTAR MODAL
+═════════════════════════════════════ */
+function bukaDaftar(){
+  tutupDD();
+  document.getElementById('inp-nis-daftar').value='';
+  document.getElementById('daftar-err').style.display='none';
+  document.getElementById('daftar-ok').style.display='none';
+  document.getElementById('modal-login').classList.remove('show');
+  document.getElementById('modal-daftar').classList.add('show');
+}
+function tutupDaftar(){ document.getElementById('modal-daftar').classList.remove('show'); }
+
+function doDaftar(){
+  var nis=document.getElementById('inp-nis-daftar').value.trim();
+  var err=document.getElementById('daftar-err');
+  var ok=document.getElementById('daftar-ok');
+  err.style.display='none'; ok.style.display='none';
+  if(!nis){err.textContent='NIS tidak boleh kosong.';err.style.display='block';return;}
+  var siswa=null;
+  for(var i=0;i<SISWA.length;i++){if(SISWA[i].nis===nis){siswa=SISWA[i];break;}}
+  if(!siswa){err.textContent='NIS tidak ditemukan dalam data sekolah. Hubungi petugas perpustakaan.';err.style.display='block';return;}
+  ok.textContent='Berhasil! Kamu akan langsung masuk sebagai '+siswa.nama.split(' ')[0]+'.';
+  ok.style.display='block';
+  setTimeout(function(){
+    setUser(siswa);
+    tutupDaftar();
+    goTo('page-dashboard',renderAktif);
+    toast('Pendaftaran berhasil! Selamat datang, '+siswa.nama.split(' ')[0]+'! 🎉','success');
+  },900);
+}
+
+/* ═════════════════════════════════════
+   LOGOUT
+═════════════════════════════════════ */
+function doLogout(){
+  currentUser=null; selectedBuku=null; foundRecord=null;
+  clearSession();
+  clearPeminjaman();
+  goTo('page-beranda');
+  toast('Kamu berhasil keluar.','info');
+}
+
+/* ═════════════════════════════════════
+   DASHBOARD
+═════════════════════════════════════ */
+function renderAktif(){
+  var wrap=document.getElementById('aktif-wrap');
+  var list=peminjamanList.filter(function(p){return p.nis===currentUser.nis&&!p.selesai;});
+  if(!list.length){wrap.innerHTML='<div class="empty-state"><i class="fas fa-box-open"></i><p>Kamu belum memiliki peminjaman aktif.</p></div>';return;}
+  var html='<div style="overflow-x:auto"><table class="book-table"><thead><tr><th>Kode</th><th>Judul</th><th>Tgl Pinjam</th><th>Batas Kembali</th><th>Status</th></tr></thead><tbody>';
+  list.forEach(function(p){
+    var telat=Math.max(0,selisih(p.tglKembali,new Date()));
+    var badge=telat>0?'<span class="stock-badge late">Terlambat '+telat+' hari</span>':'<span class="stock-badge ok">Tepat waktu</span>';
+    html+='<tr><td><code>'+p.kode+'</code></td><td>'+p.judul+'</td><td>'+fmt(p.tglPinjam)+'</td><td>'+fmt(p.tglKembali)+'</td><td>'+badge+'</td></tr>';
+  });
+  html+='</tbody></table></div>';
+  wrap.innerHTML=html;
+}
+
+/* ═════════════════════════════════════
+   PINJAM
+═════════════════════════════════════ */
+function bukaPinjam(){goTo('page-pinjam',renderTabelBuku);}
+function renderTabelBuku(){
+  var html='';
+  BUKU.forEach(function(b){
+    var badge=b.stok>0?'<span class="stock-badge ok">'+b.stok+' tersedia</span>':'<span class="stock-badge empty">Habis</span>';
+    var btn=b.stok>0?'<button class="btn-pinjam" data-kode="'+b.kode+'"><i class="fas fa-plus" style="margin-right:.28rem"></i>Pinjam</button>':'<button class="btn-pinjam" disabled>Tidak tersedia</button>';
+    html+='<tr><td><code>'+b.kode+'</code></td><td>'+b.judul+'</td><td>'+badge+'</td><td>'+btn+'</td></tr>';
+  });
+  document.getElementById('tbody-buku').innerHTML=html;
+  document.querySelectorAll('#tbody-buku .btn-pinjam:not([disabled])').forEach(function(btn){
+    btn.addEventListener('click',function(){bukaPinjamModal(btn.getAttribute('data-kode'));});
+  });
+}
+
+function bukaPinjamModal(kode){
+  var buku=null;for(var i=0;i<BUKU.length;i++){if(BUKU[i].kode===kode){buku=BUKU[i];break;}}
+  if(!buku||buku.stok<=0){toast('Stok habis!','error');return;}
+  selectedBuku=buku;
+  var tglP=new Date(),tglK=tambah7(tglP);
+  document.getElementById('m-judul').textContent=buku.judul;
+  document.getElementById('m-kode').textContent='Kode: '+buku.kode;
+  document.getElementById('m-tanggal').textContent='Pinjam: '+fmt(tglP)+' → Batas: '+fmt(tglK);
+  document.getElementById('modal-confirm').classList.add('show');
+}
+function tutupModal(){document.getElementById('modal-confirm').classList.remove('show');selectedBuku=null;}
+function konfirmasiPinjam(){
+  if(!selectedBuku)return;
+  var buku=null;for(var i=0;i<BUKU.length;i++){if(BUKU[i].kode===selectedBuku.kode){buku=BUKU[i];break;}}
+  if(!buku||buku.stok<=0){toast('Stok habis!','error');tutupModal();return;}
+  for(var j=0;j<peminjamanList.length;j++){if(peminjamanList[j].nis===currentUser.nis&&peminjamanList[j].kode===buku.kode&&!peminjamanList[j].selesai){toast('Sudah dipinjam!','error');tutupModal();return;}}
+  var tglP=new Date(),tglK=tambah7(tglP);
+  var rec={id:genId(),nis:currentUser.nis,kode:buku.kode,judul:buku.judul,tglPinjam:tglP,tglKembali:tglK,selesai:false};
+  peminjamanList.push(rec); buku.stok--;
+  savePeminjaman();
+  if(db){db.collection('peminjaman').add({nis:rec.nis,namaSiswa:currentUser.nama,kodeBuku:rec.kode,judulBuku:rec.judul,tglPinjam:firebase.firestore.Timestamp.fromDate(tglP),tglKembali:firebase.firestore.Timestamp.fromDate(tglK),status:'aktif'}).catch(function(e){console.warn(e.message);});}
+  tutupModal();renderTabelBuku();renderAktif();
+  toast('Berhasil meminjam "'+buku.judul+'"! Kembalikan sebelum '+fmt(tglK)+'.','success');
+}
+
+/* ═════════════════════════════════════
+   KEMBALI
+═════════════════════════════════════ */
+function bukaKembali(){goTo('page-kembali',resetFormKembali);}
+function resetFormKembali(){document.getElementById('inp-kode').value='';document.getElementById('result-card').className='result-card';foundRecord=null;}
+function cariPeminjaman(){
+  var kode=document.getElementById('inp-kode').value.trim().toUpperCase();
+  if(!kode){toast('Kode buku tidak boleh kosong!','error');return;}
+  var rec=null;for(var i=0;i<peminjamanList.length;i++){if(peminjamanList[i].kode===kode&&peminjamanList[i].nis===currentUser.nis&&!peminjamanList[i].selesai){rec=peminjamanList[i];break;}}
+  if(!rec){toast('Tidak ada peminjaman aktif untuk kode "'+kode+'" atas nama kamu.','error');document.getElementById('result-card').className='result-card';return;}
+  var aktual=new Date(),telat=Math.max(0,selisih(rec.tglKembali,aktual)),denda=telat*1000;
+  document.getElementById('r-nama').textContent=currentUser.nama;
+  document.getElementById('r-nis').textContent=currentUser.nis;
+  document.getElementById('r-judul').textContent=rec.judul;
+  document.getElementById('r-tgl-pinjam').textContent=fmt(rec.tglPinjam);
+  document.getElementById('r-tgl-batas').textContent=fmt(rec.tglKembali);
+  var card=document.getElementById('result-card');
+  if(telat>0){
+    document.getElementById('r-terlambat').textContent=telat+' hari';
+    document.getElementById('r-terlambat').style.color='var(--red)';
+    document.getElementById('r-denda').innerHTML='<span class="fine-amount">'+rp(denda)+'</span>';
+    card.className='result-card show fine';
+  }else{
+    document.getElementById('r-terlambat').textContent='Tidak terlambat';
+    document.getElementById('r-terlambat').style.color='var(--green)';
+    document.getElementById('r-denda').innerHTML='<span class="no-fine">Gratis (Rp 0)</span>';
+    card.className='result-card show good';
+  }
+  foundRecord={id:rec.id,kode:rec.kode,judul:rec.judul,denda:denda};
+}
+function konfirmasiKembali(){
+  if(!foundRecord)return;
+  for(var i=0;i<peminjamanList.length;i++){if(peminjamanList[i].id===foundRecord.id){peminjamanList[i].selesai=true;break;}}
+  for(var j=0;j<BUKU.length;j++){if(BUKU[j].kode===foundRecord.kode){BUKU[j].stok++;break;}}
+  savePeminjaman();
+  if(db){db.collection('pengembalian').add({nis:currentUser.nis,namaSiswa:currentUser.nama,kodeBuku:foundRecord.kode,judulBuku:foundRecord.judul,denda:foundRecord.denda,tanggal:firebase.firestore.FieldValue.serverTimestamp()}).catch(function(e){console.warn(e.message);});}
+  toast('Buku "'+foundRecord.judul+'" berhasil dikembalikan!','success');
+  resetFormKembali();
+}
+
+/* ═════════════════════════════════════
+   EVENT LISTENERS
+═════════════════════════════════════ */
+/* Login modal */
+document.getElementById('btn-masuk').addEventListener('click',doLogin);
+document.getElementById('inp-nis').addEventListener('keydown',function(e){if(e.key==='Enter')doLogin();});
+document.getElementById('close-login').addEventListener('click',tutupLogin);
+document.getElementById('to-daftar').addEventListener('click',bukaDaftar);
+
+/* Daftar modal */
+document.getElementById('btn-daftar').addEventListener('click',doDaftar);
+document.getElementById('inp-nis-daftar').addEventListener('keydown',function(e){if(e.key==='Enter')doDaftar();});
+document.getElementById('close-daftar').addEventListener('click',tutupDaftar);
+document.getElementById('to-login').addEventListener('click',bukaLogin);
+
+/* Beranda hero */
+document.getElementById('hero-mulai').addEventListener('click',bukaLogin);
+document.getElementById('hero-berita').addEventListener('click',function(){bukaBerita(false);});
+document.getElementById('semua-berita').addEventListener('click',function(){bukaBerita(false);});
+
+/* Beranda desktop nav */
+document.getElementById('dnb-berita').addEventListener('click',function(){bukaBerita(false);});
+document.getElementById('dnb-login').addEventListener('click',bukaLogin);
+document.getElementById('dnb-daftar').addEventListener('click',bukaDaftar);
+
+/* Dashboard nav */
+document.getElementById('menu-pinjam').addEventListener('click',bukaPinjam);
+document.getElementById('menu-kembali').addEventListener('click',bukaKembali);
+document.getElementById('dnav-beranda').addEventListener('click',function(){goTo('page-dashboard',renderAktif);});
+document.getElementById('dnav-berita').addEventListener('click',function(){bukaBerita(true);});
+document.getElementById('dnav-profil').addEventListener('click',bukaProfil);
+document.getElementById('dnav-logout').addEventListener('click',doLogout);
+
+/* Pinjam nav */
+document.getElementById('pnav-beranda').addEventListener('click',function(){goTo('page-dashboard',renderAktif);});
+document.getElementById('pnav-berita').addEventListener('click',function(){bukaBerita(true);});
+document.getElementById('pnav-profil').addEventListener('click',bukaProfil);
+document.getElementById('pnav-logout').addEventListener('click',doLogout);
+document.getElementById('btn-back-pinjam').addEventListener('click',function(){goTo('page-dashboard',renderAktif);});
+
+/* Kembali nav */
+document.getElementById('knav-beranda').addEventListener('click',function(){goTo('page-dashboard',renderAktif);});
+document.getElementById('knav-berita').addEventListener('click',function(){bukaBerita(true);});
+document.getElementById('knav-profil').addEventListener('click',bukaProfil);
+document.getElementById('knav-logout').addEventListener('click',doLogout);
+document.getElementById('btn-back-kembali').addEventListener('click',function(){goTo('page-dashboard',renderAktif);});
+
+/* Profil nav */
+document.getElementById('pronav-beranda').addEventListener('click',function(){goTo('page-dashboard',renderAktif);});
+document.getElementById('pronav-berita').addEventListener('click',function(){bukaBerita(true);});
+document.getElementById('pronav-logout').addEventListener('click',doLogout);
+document.getElementById('btn-back-profil').addEventListener('click',function(){goTo(prevPage,prevPage==='page-dashboard'?renderAktif:null);});
+
+/* Berita back */
+document.getElementById('btn-back-berita').addEventListener('click',function(){goTo(prevPage,prevPage==='page-dashboard'?renderAktif:null);});
+
+/* Pinjam modal */
+document.getElementById('btn-batal').addEventListener('click',tutupModal);
+document.getElementById('btn-ya-pinjam').addEventListener('click',konfirmasiPinjam);
+
+/* Kembali buku */
+document.getElementById('btn-cari').addEventListener('click',cariPeminjaman);
+document.getElementById('inp-kode').addEventListener('keydown',function(e){if(e.key==='Enter')cariPeminjaman();});
+document.getElementById('btn-konfirmasi-kembali').addEventListener('click',konfirmasiKembali);
+
+/* Berita detail */
+document.getElementById('btn-tutup-berita').addEventListener('click',function(){document.getElementById('berita-overlay').classList.remove('show');});
+document.getElementById('berita-overlay').addEventListener('click',function(e){if(e.target===document.getElementById('berita-overlay'))document.getElementById('berita-overlay').classList.remove('show');});
+
+/* ═════════════════════════════════════
+   INIT — cek localStorage, render beranda
+═════════════════════════════════════ */
+(function init(){
+  renderBerandaBerita();
+
+  /* Muat data peminjaman tersimpan */
+  peminjamanList = loadPeminjaman();
+  syncStokDariPeminjaman();
+
+  /* Cek session tersimpan */
+  var saved=loadSession();
+  if(saved){
+    setUser(saved);
+    goTo('page-dashboard',renderAktif);
+  }
+})();
+</script>
+</body>
+</html>
