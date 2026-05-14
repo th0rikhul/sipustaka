@@ -1,0 +1,1984 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>SiPustaka — Sistem Informasi Perpustakaan</title>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <style>
+  /* ═══════════════════════════════════════
+     TOKENS
+  ═══════════════════════════════════════ */
+  :root{
+    --cream:#FAF6EF; --brown:#3B2A1A; --gold:#C9962C; --gold-lt:#E8BC5C;
+    --rust:#A0522D;  --green:#2D6A4F; --red:#B5373A;
+    --card:#FFFDF8;  --border:#E8DFD0;
+    --sh:0 4px 24px rgba(59,42,26,.10);
+    --r:14px;
+    --fh:'Playfair Display',serif; --fb:'DM Sans',sans-serif;
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;font-family:var(--fb);background:var(--cream);color:var(--brown);overflow:hidden}
+
+  /* ═══════════════════════════════════════
+     PAGE SYSTEM
+  ═══════════════════════════════════════ */
+  .page{position:fixed;inset:0;display:flex;flex-direction:column;opacity:0;pointer-events:none;transform:translateY(14px);transition:opacity .3s,transform .3s;overflow:hidden}
+  .page.active{opacity:1;pointer-events:all;transform:translateY(0)}
+  .page-body{flex:1;overflow-y:auto;padding:2rem 1.5rem}
+  .inner{max-width:1060px;margin:0 auto}
+
+  /* ═══════════════════════════════════════
+     NAVBAR — shared base
+  ═══════════════════════════════════════ */
+  .app-nav{
+    background:var(--brown);padding:.85rem 2rem;
+    display:flex;align-items:center;justify-content:space-between;
+    flex-shrink:0;box-shadow:0 2px 14px rgba(0,0,0,.28);
+    z-index:100;position:relative;
+  }
+  .nav-brand{display:flex;align-items:center;gap:.7rem;text-decoration:none}
+  .nav-brand-icon{width:36px;height:36px;background:linear-gradient(135deg,var(--gold),var(--gold-lt));border-radius:9px;display:flex;align-items:center;justify-content:center}
+  .nav-brand-icon i{color:var(--brown);font-size:1rem}
+  .nav-brand-text{font-family:var(--fh);font-size:1.3rem;color:#fff;font-weight:700}
+
+  /* Desktop nav links (hidden on mobile) */
+  .nav-center{display:none;align-items:center;gap:.25rem}
+  .nav-right{display:none;align-items:center;gap:.5rem}
+  @media(min-width:768px){
+    .nav-center{display:flex}
+    .nav-right{display:flex}
+    .btn-hamburger{display:none!important}
+    .nav-dropdown{display:none!important}
+  }
+
+  .nav-link{background:transparent;border:none;color:rgba(255,255,255,.75);font-family:var(--fb);font-size:.9rem;font-weight:500;padding:.45rem .9rem;border-radius:8px;cursor:pointer;transition:background .18s,color .18s;display:flex;align-items:center;gap:.45rem}
+  .nav-link:hover,.nav-link.active-link{background:rgba(255,255,255,.12);color:#fff}
+  .nav-link i{font-size:.85rem}
+
+  /* Avatar button (desktop) */
+  .nav-avatar-btn{width:34px;height:34px;border-radius:50%;border:2px solid rgba(255,255,255,.4);background:linear-gradient(135deg,var(--gold),var(--rust));display:flex;align-items:center;justify-content:center;cursor:pointer;transition:border-color .2s;overflow:hidden}
+  .nav-avatar-btn:hover{border-color:var(--gold-lt)}
+  .nav-avatar-btn i{color:#fff;font-size:1rem}
+  .btn-nav-logout{background:transparent;border:1.5px solid rgba(255,255,255,.28);border-radius:8px;padding:.38rem .85rem;color:rgba(255,255,255,.8);font-family:var(--fb);font-size:.82rem;cursor:pointer;transition:background .18s;display:flex;align-items:center;gap:.4rem}
+  .btn-nav-logout:hover{background:rgba(255,255,255,.1);color:#fff}
+
+  /* Hamburger (mobile only) */
+  .btn-hamburger{background:transparent;border:none;cursor:pointer;padding:.35rem .45rem;display:flex;flex-direction:column;gap:5px;border-radius:8px;transition:background .2s}
+  .btn-hamburger:hover{background:rgba(255,255,255,.12)}
+  .btn-hamburger span{display:block;width:21px;height:2.5px;background:#fff;border-radius:2px}
+
+  /* Mobile dropdown */
+  .nav-dropdown{position:absolute;top:calc(100% + 6px);right:1rem;background:var(--card);border:1.5px solid var(--border);border-radius:13px;min-width:190px;box-shadow:0 10px 36px rgba(59,42,26,.18);z-index:200;opacity:0;pointer-events:none;transform:translateY(-8px) scale(.97);transition:opacity .22s,transform .22s;overflow:hidden}
+  .nav-dropdown.open{opacity:1;pointer-events:all;transform:none}
+  .dd-item{display:flex;align-items:center;gap:.8rem;padding:.8rem 1.15rem;font-size:.9rem;font-weight:500;color:var(--brown);cursor:pointer;transition:background .14s;border-bottom:1px solid var(--border)}
+  .dd-item:last-child{border-bottom:none}
+  .dd-item:hover{background:rgba(201,150,44,.08)}
+  .dd-item.danger{color:var(--red)}
+  .dd-item.danger:hover{background:rgba(181,55,58,.07)}
+  .dd-item i{width:18px;text-align:center;color:var(--gold)}
+  .dd-item.danger i{color:var(--red)}
+
+  /* ═══════════════════════════════════════
+     BERANDA (halaman publik)
+  ═══════════════════════════════════════ */
+  .hero{
+    background:linear-gradient(135deg,var(--brown) 0%,#5a3820 55%,var(--rust) 100%);
+    padding:4rem 2rem 3.5rem;text-align:center;color:#fff;position:relative;overflow:hidden;flex-shrink:0;
+  }
+  .hero::before{content:'';position:absolute;inset:0;background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Ccircle cx='30' cy='30' r='20'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");}
+  .hero-inner{position:relative;max-width:680px;margin:0 auto}
+  .hero-badge{display:inline-block;background:rgba(201,150,44,.25);border:1px solid rgba(201,150,44,.5);color:var(--gold-lt);border-radius:20px;padding:.3rem .9rem;font-size:.75rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:1.25rem}
+  .hero h1{font-family:var(--fh);font-size:clamp(2rem,5vw,3rem);font-weight:900;margin-bottom:.75rem;line-height:1.15}
+  .hero p{color:rgba(255,255,255,.72);font-size:1rem;margin-bottom:2rem;line-height:1.6;max-width:500px;margin-left:auto;margin-right:auto}
+  .hero-actions{display:flex;gap:1rem;justify-content:center;flex-wrap:wrap}
+  .btn-hero-primary{background:linear-gradient(135deg,var(--gold),var(--rust));border:none;border-radius:11px;padding:.85rem 2rem;color:#fff;font-family:var(--fb);font-weight:700;font-size:1rem;cursor:pointer;transition:opacity .2s,transform .15s;display:flex;align-items:center;gap:.5rem}
+  .btn-hero-primary:hover{opacity:.88;transform:translateY(-2px)}
+  .btn-hero-ghost{background:transparent;border:2px solid rgba(255,255,255,.35);border-radius:11px;padding:.83rem 2rem;color:#fff;font-family:var(--fb);font-weight:600;font-size:1rem;cursor:pointer;transition:background .2s;display:flex;align-items:center;gap:.5rem}
+  .btn-hero-ghost:hover{background:rgba(255,255,255,.1)}
+
+  /* Statistik strip */
+  .stats-strip{background:var(--card);border-bottom:1px solid var(--border);padding:.85rem 2rem;display:flex;gap:2.5rem;justify-content:center;flex-wrap:wrap;flex-shrink:0}
+  .stat-item{text-align:center}
+  .stat-num{font-family:var(--fh);font-size:1.3rem;font-weight:900;color:var(--gold)}
+  .stat-lbl{font-size:.72rem;color:#9a8070;font-weight:600;text-transform:uppercase;letter-spacing:.05em}
+
+  /* ═══════════════════════════════════════
+     BERITA CARDS (beranda & page berita)
+  ═══════════════════════════════════════ */
+  .section-title{font-family:var(--fh);font-size:1.4rem;color:var(--brown);margin-bottom:1.25rem;display:flex;align-items:center;gap:.6rem}
+  .section-title::after{content:'';flex:1;height:1px;background:var(--border)}
+
+  .berita-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:1.25rem;margin-bottom:2rem}
+  .berita-card{background:var(--card);border:1.5px solid var(--border);border-radius:var(--r);overflow:hidden;cursor:pointer;transition:transform .2s,box-shadow .2s,border-color .2s}
+  .berita-card:hover{transform:translateY(-3px);box-shadow:var(--sh);border-color:var(--gold)}
+  .berita-thumb{height:90px;display:flex;align-items:center;justify-content:center;font-size:2rem}
+  .berita-thumb.t1{background:linear-gradient(135deg,rgba(201,150,44,.22),rgba(201,150,44,.07));color:var(--gold)}
+  .berita-thumb.t2{background:linear-gradient(135deg,rgba(45,106,79,.18),rgba(45,106,79,.05));color:var(--green)}
+  .berita-thumb.t3{background:linear-gradient(135deg,rgba(160,82,45,.18),rgba(160,82,45,.05));color:var(--rust)}
+  .berita-thumb.t4{background:linear-gradient(135deg,rgba(59,42,26,.12),rgba(201,150,44,.1));color:var(--brown)}
+  .berita-thumb.t5{background:linear-gradient(135deg,rgba(45,106,79,.18),rgba(201,150,44,.1));color:var(--green)}
+  .berita-body{padding:1rem 1.1rem 1.1rem}
+  .berita-tag{font-size:.68rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--gold);margin-bottom:.3rem}
+  .berita-judul{font-family:var(--fh);font-size:.98rem;font-weight:700;color:var(--brown);line-height:1.35;margin-bottom:.4rem}
+  .berita-ringkas{font-size:.8rem;color:#9a8070;line-height:1.5;margin-bottom:.55rem}
+  .berita-date{font-size:.72rem;color:#b0a090}
+
+  /* ═══════════════════════════════════════
+     MODAL: LOGIN / DAFTAR / BERITA DETAIL
+  ═══════════════════════════════════════ */
+  .modal-overlay{display:none;position:fixed;inset:0;background:rgba(59,42,26,.6);z-index:900;align-items:center;justify-content:center;padding:1rem}
+  .modal-overlay.show{display:flex}
+  .modal-box{background:var(--card);border-radius:20px;padding:2rem;width:100%;max-width:420px;box-shadow:0 20px 60px rgba(0,0,0,.25);position:relative;animation:mIn .25s ease}
+  @keyframes mIn{from{opacity:0;transform:scale(.93)}to{opacity:1;transform:scale(1)}}
+  .modal-close{position:absolute;top:1rem;right:1rem;background:var(--border);border:none;width:30px;height:30px;border-radius:50%;font-size:.85rem;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--brown);transition:background .18s}
+  .modal-close:hover{background:#ddd}
+  .modal-icon{width:54px;height:54px;background:linear-gradient(135deg,var(--gold),var(--rust));border-radius:14px;display:flex;align-items:center;justify-content:center;margin:0 auto 1rem}
+  .modal-icon i{font-size:1.5rem;color:#fff}
+  .modal-title{text-align:center;font-family:var(--fh);font-size:1.5rem;font-weight:900;color:var(--brown);margin-bottom:.2rem}
+  .modal-sub{text-align:center;color:#9a8070;font-size:.85rem;margin-bottom:1.5rem}
+  .form-label{font-weight:600;font-size:.82rem;letter-spacing:.04em;color:var(--brown);display:block;margin-bottom:.35rem}
+  .form-control{border:1.5px solid var(--border);border-radius:10px;padding:.7rem .95rem;font-family:var(--fb);font-size:.93rem;background:var(--cream);color:var(--brown);width:100%;transition:border-color .2s,box-shadow .2s}
+  .form-control:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px rgba(201,150,44,.14);background:#fff}
+  .form-group{margin-bottom:1rem}
+  .btn-modal-primary{width:100%;background:linear-gradient(135deg,var(--gold),var(--rust));border:none;border-radius:10px;padding:.8rem;color:#fff;font-weight:700;font-size:.95rem;font-family:var(--fb);cursor:pointer;transition:opacity .2s;margin-top:.25rem}
+  .btn-modal-primary:hover{opacity:.88}
+  .modal-switch{text-align:center;margin-top:1rem;font-size:.83rem;color:#9a8070}
+  .modal-switch a{color:var(--gold);font-weight:700;cursor:pointer;text-decoration:none}
+  .modal-switch a:hover{text-decoration:underline}
+  .err-msg{color:var(--red);font-size:.8rem;margin-top:.35rem;display:none}
+  .ok-msg{color:var(--green);font-size:.8rem;margin-top:.35rem;display:none}
+
+  /* Berita detail slide-up */
+  .berita-overlay{display:none;position:fixed;inset:0;background:rgba(59,42,26,.58);z-index:1000;align-items:flex-end;justify-content:center}
+  .berita-overlay.show{display:flex}
+  .berita-detail-box{background:var(--card);border-radius:22px 22px 0 0;width:100%;max-width:700px;max-height:88vh;overflow-y:auto;padding:2rem;animation:slideUp .3s ease}
+  @keyframes slideUp{from{transform:translateY(40px);opacity:0}to{transform:translateY(0);opacity:1}}
+  .bd-tag{font-size:.7rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--gold);margin-bottom:.5rem}
+  .bd-judul{font-family:var(--fh);font-size:1.35rem;font-weight:900;color:var(--brown);margin-bottom:.4rem;line-height:1.3}
+  .bd-meta{font-size:.77rem;color:#9a8070;margin-bottom:1.25rem}
+  .bd-body{font-size:.92rem;line-height:1.78;color:#4a3826}
+  .bd-body p{margin-bottom:.95rem}
+  .btn-tutup{background:transparent;border:1.5px solid var(--border);border-radius:8px;padding:.38rem .9rem;font-family:var(--fb);font-size:.83rem;color:var(--brown);cursor:pointer;margin-bottom:1.25rem;display:inline-flex;align-items:center;gap:.4rem}
+  .btn-tutup:hover{background:var(--border)}
+
+  /* ═══════════════════════════════════════
+     DASHBOARD (setelah login)
+  ═══════════════════════════════════════ */
+  .dash-welcome{margin-bottom:1.75rem}
+  .dash-welcome h2{font-family:var(--fh);font-size:1.75rem;color:var(--brown)}
+  .dash-welcome p{color:#9a8070;font-size:.93rem;margin-top:.25rem}
+  .text-gold{color:var(--gold)}
+
+  /* ── Background premium SEMUA halaman pasca-login ── */
+  #page-dashboard .page-body,
+  #page-pinjam    .page-body,
+  #page-kembali   .page-body,
+  #page-profil    .page-body,
+  #page-berita    .page-body{
+    background:
+      radial-gradient(ellipse 70% 35% at 100% 0%,   rgba(201,150,44,.11) 0%,transparent 55%),
+      radial-gradient(ellipse 55% 40% at 0%   100%,  rgba(160,82,45,.09)  0%,transparent 50%),
+      radial-gradient(ellipse 40% 30% at 50%  60%,   rgba(59,42,26,.04)   0%,transparent 60%),
+      linear-gradient(180deg,#f7f0e5 0%,#faf6ef 50%,#f5ede0 100%);
+    padding:0;
+  }
+
+  /* ── Wrapper konten ── */
+  .dash-wrap{padding:1.5rem 1.5rem 0;position:relative;z-index:1}
+
+  /* ── Ornamen blur dekoratif ── */
+  .dash-orb{position:absolute;border-radius:50%;filter:blur(72px);pointer-events:none;z-index:0}
+  .dash-orb-1{width:320px;height:320px;background:radial-gradient(circle,rgba(201,150,44,.13),transparent 70%);top:-100px;right:-80px}
+  .dash-orb-2{width:240px;height:240px;background:radial-gradient(circle,rgba(160,82,45,.1),transparent 70%);bottom:80px;left:-70px}
+  .dash-orb-3{width:180px;height:180px;background:radial-gradient(circle,rgba(45,106,79,.07),transparent 70%);top:40%;right:10%}
+
+  /* ── Hero banner ── */
+  .dash-hero{
+    background:
+      linear-gradient(135deg,#160a02 0%,#2e1a0a 30%,#3B2A1A 55%,#5c3317 78%,#7a4318 100%);
+    border-radius:22px;padding:2.25rem 2rem 2rem;margin-bottom:1.4rem;
+    position:relative;overflow:hidden;color:#fff;
+    box-shadow:0 12px 48px rgba(59,42,26,.38),0 2px 8px rgba(201,150,44,.18),0 0 0 1px rgba(201,150,44,.12);
+    z-index:1;
+  }
+  .dash-hero::before{
+    content:'';position:absolute;inset:0;
+    background:
+      radial-gradient(ellipse 90% 110% at 110% 50%, rgba(201,150,44,.24) 0%,transparent 55%),
+      radial-gradient(ellipse 60% 80%  at -15% 90%, rgba(160,82,45,.20)  0%,transparent 55%),
+      url("data:image/svg+xml,%3Csvg width='80' height='80' viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23ffffff' fill-opacity='0.022'%3E%3Ccircle cx='40' cy='40' r='30'/%3E%3C/g%3E%3C/svg%3E");
+  }
+  .dash-hero::after{
+    content:'📚';position:absolute;right:1.5rem;bottom:.8rem;
+    font-size:5.5rem;opacity:.055;line-height:1;pointer-events:none;filter:blur(1px);
+  }
+  .dash-hero-inner{position:relative;z-index:1}
+  .dash-hero-time{
+    font-size:.72rem;color:rgba(255,255,255,.5);letter-spacing:.08em;
+    text-transform:uppercase;margin-bottom:.55rem;display:flex;align-items:center;gap:.45rem;
+  }
+  .dash-hero-time::before{content:'';display:inline-block;width:6px;height:6px;background:var(--gold-lt);border-radius:50%;animation:pulse 2s infinite}
+  @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.75)}}
+  .dash-hero h2{font-family:var(--fh);font-size:1.8rem;font-weight:900;color:#fff;margin-bottom:.4rem;line-height:1.15}
+  .dash-hero h2 .text-gold{color:var(--gold-lt)!important;text-shadow:0 0 24px rgba(232,188,92,.35)}
+  .dash-hero-sub{color:rgba(255,255,255,.6);font-size:.85rem;margin-bottom:1.3rem;line-height:1.55}
+  .dash-hero-chips{display:flex;gap:.5rem;flex-wrap:wrap}
+  .dash-chip{
+    background:rgba(255,255,255,.08);
+    border:1px solid rgba(255,255,255,.16);
+    backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+    border-radius:20px;padding:.28rem .82rem;font-size:.73rem;
+    color:rgba(255,255,255,.85);display:flex;align-items:center;gap:.35rem;
+    transition:background .2s,border-color .2s;cursor:default;
+  }
+  .dash-chip:hover{background:rgba(255,255,255,.14);border-color:rgba(201,150,44,.4)}
+  .dash-chip i{color:var(--gold-lt);font-size:.72rem}
+
+  /* Quick-stat bar inside hero */
+  .dash-stats-bar{
+    display:flex;gap:0;margin-top:1.5rem;
+    background:rgba(0,0,0,.22);border-radius:12px;overflow:hidden;
+    border:1px solid rgba(255,255,255,.09);backdrop-filter:blur(8px);
+  }
+  .dash-stat-item{flex:1;padding:.72rem .4rem;text-align:center;border-right:1px solid rgba(255,255,255,.07)}
+  .dash-stat-item:last-child{border-right:none}
+  .dash-stat-num{font-family:var(--fh);font-size:1.18rem;font-weight:900;color:var(--gold-lt)}
+  .dash-stat-lbl{font-size:.6rem;color:rgba(255,255,255,.45);text-transform:uppercase;letter-spacing:.05em;margin-top:.1rem}
+
+  /* ── MENU CARD premium ── */
+  .menu-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.1rem;margin-bottom:1.4rem;position:relative;z-index:1}
+  @media(max-width:480px){.menu-grid{grid-template-columns:1fr}}
+
+  .menu-card{
+    background:linear-gradient(145deg,#fffdf9,#fdf5e6);
+    border:1px solid rgba(232,223,208,.9);
+    border-radius:18px;
+    padding:1.6rem 1.4rem;
+    cursor:pointer;
+    position:relative;overflow:hidden;
+    transition:transform .28s cubic-bezier(.34,1.56,.64,1),box-shadow .28s,border-color .28s;
+    box-shadow:0 2px 16px rgba(59,42,26,.07),0 1px 0 rgba(255,255,255,.9) inset;
+  }
+  /* accent kiri */
+  .menu-card::before{
+    content:'';position:absolute;top:0;left:0;bottom:0;width:4px;
+    background:linear-gradient(180deg,var(--gold),var(--rust),var(--gold));
+    background-size:100% 200%;border-radius:18px 0 0 18px;
+    opacity:0;transition:opacity .28s;animation:accentFlow 3s linear infinite paused;
+  }
+  /* glow overlay */
+  .menu-card::after{
+    content:'';position:absolute;inset:0;
+    background:radial-gradient(ellipse 90% 70% at 5% 50%,rgba(201,150,44,.08) 0%,transparent 65%);
+    opacity:0;transition:opacity .28s;border-radius:18px;
+  }
+  @keyframes accentFlow{0%{background-position:0 0}100%{background-position:0 200%}}
+  .menu-card:hover{
+    transform:translateY(-6px) scale(1.012);
+    box-shadow:0 20px 50px rgba(59,42,26,.16),0 0 0 1.5px rgba(201,150,44,.25),0 1px 0 rgba(255,255,255,.9) inset;
+    border-color:rgba(201,150,44,.3);
+  }
+  .menu-card:hover::before{opacity:1;animation-play-state:running}
+  .menu-card:hover::after{opacity:1}
+
+  .menu-card-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:.85rem}
+  .menu-icon{
+    width:52px;height:52px;border-radius:14px;
+    display:flex;align-items:center;justify-content:center;font-size:1.35rem;
+    transition:transform .28s cubic-bezier(.34,1.56,.64,1),box-shadow .28s;
+  }
+  .menu-card:hover .menu-icon{transform:scale(1.14) rotate(-5deg)}
+  .menu-icon.borrow{
+    background:linear-gradient(135deg,rgba(201,150,44,.2),rgba(201,150,44,.07));
+    color:var(--gold);border:1px solid rgba(201,150,44,.22);
+    box-shadow:0 4px 14px rgba(201,150,44,.15);
+  }
+  .menu-card:hover .menu-icon.borrow{box-shadow:0 8px 24px rgba(201,150,44,.28)}
+  .menu-icon.ret{
+    background:linear-gradient(135deg,rgba(45,106,79,.18),rgba(45,106,79,.06));
+    color:var(--green);border:1px solid rgba(45,106,79,.2);
+    box-shadow:0 4px 14px rgba(45,106,79,.12);
+  }
+  .menu-card:hover .menu-icon.ret{box-shadow:0 8px 24px rgba(45,106,79,.22)}
+  .menu-arrow{color:rgba(59,42,26,.18);font-size:.85rem;transition:transform .28s,color .28s;margin-top:.2rem}
+  .menu-card:hover .menu-arrow{transform:translateX(5px);color:var(--gold)}
+  .menu-card h4{font-family:var(--fh);font-size:1.08rem;color:var(--brown);margin-bottom:.25rem}
+  .menu-card p{color:#9a8070;font-size:.8rem;line-height:1.5}
+  .menu-card-badge{
+    display:inline-flex;align-items:center;gap:.3rem;
+    background:linear-gradient(135deg,rgba(201,150,44,.1),rgba(201,150,44,.05));
+    border:1px solid rgba(201,150,44,.18);color:var(--gold);
+    font-size:.63rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+    padding:.2rem .55rem;border-radius:8px;margin-top:.6rem;
+  }
+  .menu-card-badge.green{
+    background:linear-gradient(135deg,rgba(45,106,79,.1),rgba(45,106,79,.04));
+    border-color:rgba(45,106,79,.18);color:var(--green);
+  }
+
+  /* ── PANEL premium (peminjaman aktif) ── */
+  .panel{
+    background:linear-gradient(145deg,#fffef9,#faf2e2);
+    border:1px solid rgba(232,223,208,.8);
+    border-radius:18px;overflow:hidden;
+    box-shadow:0 4px 24px rgba(59,42,26,.08),0 1px 0 rgba(255,255,255,.9) inset,0 0 0 1px rgba(201,150,44,.06);
+    position:relative;z-index:1;
+  }
+  .panel::before{
+    content:'';position:absolute;top:0;left:0;right:0;height:3px;
+    background:linear-gradient(90deg,var(--gold),var(--rust),var(--gold-lt),var(--gold));
+    background-size:300%;animation:shimmer 4s linear infinite;
+  }
+  @keyframes shimmer{0%{background-position:0%}100%{background-position:300%}}
+  .panel-header{
+    padding:1rem 1.4rem;border-bottom:1px solid rgba(232,223,208,.65);
+    display:flex;align-items:center;justify-content:space-between;
+    background:linear-gradient(135deg,rgba(201,150,44,.04),rgba(160,82,45,.02));
+  }
+  .panel-header h5{margin:0;font-family:var(--fh);font-size:1rem;display:flex;align-items:center;gap:.55rem}
+  .panel-header h5 .ph-icon{
+    width:28px;height:28px;border-radius:8px;
+    background:linear-gradient(135deg,var(--gold),var(--rust));
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:0 3px 10px rgba(201,150,44,.3);
+  }
+  .panel-header h5 .ph-icon i{color:#fff;font-size:.75rem}
+  .panel-body{padding:1.25rem 1.4rem;background:transparent}
+
+  /* ── Inner page wrapper (pinjam, kembali, profil, berita) ── */
+  .page-inner-wrap{
+    padding:1.5rem;position:relative;z-index:1;
+  }
+  /* Panel di halaman pinjam & kembali juga premium */
+  #page-pinjam  .panel,
+  #page-kembali .panel{
+    box-shadow:0 4px 24px rgba(59,42,26,.09),0 1px 0 rgba(255,255,255,.9) inset;
+  }
+  .btn-back{
+    background:rgba(255,255,255,.7);border:1px solid rgba(232,223,208,.9);
+    border-radius:10px;padding:.35rem .85rem;font-size:.8rem;font-family:var(--fb);
+    color:var(--brown);cursor:pointer;transition:all .18s;
+    display:flex;align-items:center;gap:.35rem;
+    backdrop-filter:blur(6px);box-shadow:0 2px 8px rgba(59,42,26,.06);
+  }
+  .btn-back:hover{background:#fff;border-color:rgba(201,150,44,.35);color:var(--gold);box-shadow:0 4px 14px rgba(59,42,26,.1)}
+
+  /* ── SECTION TITLE (dashboard) ── */
+  .dash-berita-section{position:relative;z-index:1;margin-bottom:1.4rem}
+  .dash-section-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:.85rem}
+  .dash-section-title{
+    font-family:var(--fh);font-size:1.12rem;color:var(--brown);
+    display:flex;align-items:center;gap:.5rem;
+  }
+  .dash-section-title i{color:var(--gold)}
+  .dash-section-badge{
+    font-size:.68rem;font-weight:700;color:var(--gold);
+    background:linear-gradient(135deg,rgba(201,150,44,.12),rgba(201,150,44,.05));
+    border:1px solid rgba(201,150,44,.22);border-radius:12px;padding:.2rem .6rem;
+  }
+
+  /* ── BERITA GRID dashboard ── */
+  .dash-berita-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:.85rem;margin-bottom:.85rem}
+  @media(max-width:480px){.dash-berita-grid{grid-template-columns:1fr}}
+
+  .dash-berita-card{
+    background:linear-gradient(145deg,#fffdf9,#fdf5e5);
+    border:1px solid rgba(232,223,208,.85);
+    border-radius:14px;overflow:hidden;cursor:pointer;
+    display:flex;gap:0;
+    transition:transform .24s cubic-bezier(.34,1.56,.64,1),box-shadow .24s,border-color .24s;
+    box-shadow:0 2px 10px rgba(59,42,26,.06),0 1px 0 rgba(255,255,255,.8) inset;
+  }
+  .dash-berita-card:hover{
+    transform:translateY(-4px) scale(1.01);
+    box-shadow:0 14px 36px rgba(59,42,26,.13),0 0 0 1px rgba(201,150,44,.22);
+    border-color:rgba(201,150,44,.38);
+  }
+  .dash-berita-thumb{
+    width:70px;min-height:78px;flex-shrink:0;
+    display:flex;align-items:center;justify-content:center;font-size:1.45rem;
+    position:relative;
+  }
+  .dash-berita-thumb::after{
+    content:'';position:absolute;right:0;top:12%;bottom:12%;
+    width:1px;background:linear-gradient(180deg,transparent,rgba(232,223,208,.8),transparent);
+  }
+  .dash-berita-content{padding:.72rem .88rem;flex:1;display:flex;flex-direction:column;justify-content:center}
+  .dash-berita-tag{font-size:.61rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--gold);margin-bottom:.2rem}
+  .dash-berita-judul{font-family:var(--fh);font-size:.86rem;font-weight:700;color:var(--brown);line-height:1.3;margin-bottom:.22rem}
+  .dash-berita-date{font-size:.67rem;color:#b0a090;display:flex;align-items:center;gap:.24rem}
+
+  .btn-semua-berita-dash{
+    width:100%;
+    background:linear-gradient(135deg,rgba(201,150,44,.09),rgba(160,82,45,.06));
+    border:1.5px solid rgba(201,150,44,.28);
+    border-radius:13px;padding:.82rem;
+    font-family:var(--fh);font-size:.92rem;font-weight:700;
+    color:var(--gold);cursor:pointer;
+    transition:all .24s;
+    display:flex;align-items:center;justify-content:center;gap:.5rem;
+    letter-spacing:.02em;
+    box-shadow:0 2px 10px rgba(201,150,44,.1);
+  }
+  .btn-semua-berita-dash:hover{
+    background:linear-gradient(135deg,var(--gold),var(--rust));
+    border-color:transparent;color:#fff;
+    box-shadow:0 8px 24px rgba(201,150,44,.35);
+    transform:translateY(-2px);
+  }
+
+  /* ── TABLE premium ── */
+  .book-table{width:100%;border-collapse:collapse;font-size:.88rem}
+  .book-table th{
+    background:linear-gradient(135deg,var(--brown),#5c3317);
+    color:#fff;padding:.7rem .95rem;text-align:left;font-weight:600;font-size:.8rem;letter-spacing:.04em;
+  }
+  .book-table th:first-child{border-radius:10px 0 0 10px}
+  .book-table th:last-child{border-radius:0 10px 10px 0}
+  .book-table td{padding:.8rem .95rem;border-bottom:1px solid rgba(232,223,208,.7);vertical-align:middle}
+  .book-table tr:last-child td{border-bottom:none}
+  .book-table tr:hover td{background:rgba(201,150,44,.05)}
+  .stock-badge{display:inline-block;padding:.22rem .6rem;border-radius:20px;font-size:.75rem;font-weight:600}
+  .stock-badge.ok{background:rgba(45,106,79,.12);color:var(--green)}
+  .stock-badge.empty{background:rgba(181,55,58,.1);color:var(--red)}
+  .stock-badge.late{background:rgba(181,55,58,.1);color:var(--red)}
+  .btn-pinjam{
+    background:linear-gradient(135deg,var(--gold),var(--rust));border:none;border-radius:8px;
+    padding:.4rem .95rem;color:#fff;font-size:.8rem;font-weight:700;font-family:var(--fb);cursor:pointer;
+    transition:all .2s;box-shadow:0 3px 10px rgba(201,150,44,.25);
+  }
+  .btn-pinjam:hover{opacity:.88;transform:translateY(-1px);box-shadow:0 6px 16px rgba(201,150,44,.35)}
+  .btn-pinjam:disabled{background:#ccc;cursor:not-allowed;box-shadow:none;transform:none}
+
+  /* ── Return form ── */
+  .return-form{max-width:520px}
+  .input-row{display:flex;gap:.65rem;margin-bottom:.9rem}
+  .btn-cari{
+    background:linear-gradient(135deg,var(--green),#1a4535);border:none;border-radius:10px;
+    padding:.7rem 1.35rem;color:#fff;font-weight:700;font-size:.9rem;font-family:var(--fb);
+    cursor:pointer;white-space:nowrap;flex-shrink:0;transition:all .2s;
+    box-shadow:0 3px 12px rgba(45,106,79,.25);
+  }
+  .btn-cari:hover{opacity:.88;transform:translateY(-1px);box-shadow:0 6px 18px rgba(45,106,79,.35)}
+  .result-card{
+    border-radius:14px;padding:1.35rem;margin-top:1.35rem;
+    border:1px solid var(--border);display:none;
+    background:linear-gradient(145deg,#fffdf9,#faf3e4);
+    box-shadow:0 4px 20px rgba(59,42,26,.07);
+  }
+  .result-card.show{display:block}
+  .result-card.fine{border-color:rgba(181,55,58,.35);background:linear-gradient(145deg,#fff9f9,#fdf0f0)}
+  .result-card.good{border-color:rgba(45,106,79,.3);background:linear-gradient(145deg,#f9fffc,#eef8f2)}
+  .result-row{display:flex;justify-content:space-between;padding:.5rem 0;border-bottom:1px solid rgba(232,223,208,.6);font-size:.88rem}
+  .result-row:last-child{border-bottom:none}
+  .result-label{color:#9a8070}
+  .result-value{font-weight:600}
+  .fine-amount{font-size:1.25rem;color:var(--red);font-weight:700;font-family:var(--fh)}
+  .no-fine{font-size:1.05rem;color:var(--green);font-weight:700}
+  .btn-konfirmasi{
+    width:100%;margin-top:1.1rem;
+    background:linear-gradient(135deg,var(--green),#1a4535);border:none;border-radius:10px;
+    padding:.78rem;color:#fff;font-weight:700;font-size:.92rem;font-family:var(--fb);
+    cursor:pointer;transition:all .2s;box-shadow:0 4px 14px rgba(45,106,79,.28);
+  }
+  .btn-konfirmasi:hover{opacity:.88;transform:translateY(-1px);box-shadow:0 8px 22px rgba(45,106,79,.38)}
+
+  /* ── Empty state ── */
+  .empty-state{text-align:center;padding:2.5rem 1rem;color:#b0a090}
+  .empty-state i{font-size:2.5rem;margin-bottom:.8rem;display:block;opacity:.6}
+
+  /* ── Modal pinjam ── */
+  .modal-info{background:linear-gradient(135deg,var(--cream),#f5ede0);border-radius:10px;padding:.95rem;margin:1rem 0;font-size:.9rem;border:1px solid var(--border)}
+  .modal-info .bk{font-weight:700;font-size:.97rem;margin-bottom:.3rem}
+  .modal-info span{color:#9a8070;font-size:.8rem}
+  .modal-actions{display:flex;gap:.65rem;justify-content:flex-end;margin-top:.9rem}
+  .btn-cancel{background:var(--border);border:none;border-radius:9px;padding:.55rem 1.15rem;font-family:var(--fb);font-weight:600;cursor:pointer;transition:background .18s}
+  .btn-cancel:hover{background:#ddd}
+  .btn-confirm{background:linear-gradient(135deg,var(--gold),var(--rust));border:none;border-radius:9px;padding:.55rem 1.35rem;color:#fff;font-family:var(--fb);font-weight:700;cursor:pointer;box-shadow:0 3px 12px rgba(201,150,44,.28);transition:all .2s}
+  .btn-confirm:hover{opacity:.88;transform:translateY(-1px)}
+
+  /* ── PROFIL PAGE premium ── */
+  .profil-wrap{max-width:460px;margin:0 auto}
+  .profil-card{
+    background:linear-gradient(145deg,#fffdf9,#faf3e4);
+    border:1px solid rgba(232,223,208,.85);
+    border-radius:22px;overflow:hidden;
+    box-shadow:0 8px 40px rgba(59,42,26,.1),0 1px 0 rgba(255,255,255,.9) inset;
+  }
+  .profil-hdr{
+    height:110px;
+    background:linear-gradient(135deg,#1c0e04,#3B2A1A 40%,var(--rust) 75%,var(--gold));
+    position:relative;overflow:hidden;
+  }
+  .profil-hdr::after{
+    content:'';position:absolute;inset:0;
+    background:radial-gradient(ellipse 80% 120% at 110% 50%,rgba(201,150,44,.3) 0%,transparent 55%);
+  }
+  .profil-avatar-wrap{position:absolute;bottom:-44px;left:50%;transform:translateX(-50%);z-index:1}
+  .profil-avatar{
+    width:88px;height:88px;border-radius:50%;
+    border:4px solid #fffdf9;
+    background:linear-gradient(135deg,var(--gold-lt),var(--gold));
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:0 6px 24px rgba(59,42,26,.25),0 0 0 2px rgba(201,150,44,.2);
+  }
+  .profil-avatar i{font-size:2.7rem;color:var(--brown)}
+  .profil-body{padding:3.2rem 1.75rem 1.75rem;text-align:center}
+  .profil-nama{font-family:var(--fh);font-size:1.38rem;font-weight:900;color:var(--brown);margin-bottom:.25rem}
+  .profil-nis{
+    display:inline-block;
+    background:linear-gradient(135deg,rgba(201,150,44,.14),rgba(201,150,44,.06));
+    color:var(--gold);border:1.5px solid rgba(201,150,44,.28);
+    border-radius:20px;padding:.22rem .85rem;font-size:.78rem;font-weight:700;letter-spacing:.06em;margin-bottom:1.4rem;
+  }
+  .profil-grid{display:grid;grid-template-columns:1fr 1fr;gap:.85rem;text-align:left}
+  .profil-item{
+    background:linear-gradient(135deg,rgba(255,255,255,.85),rgba(250,243,228,.6));
+    border:1px solid rgba(232,223,208,.8);border-radius:12px;padding:.8rem .95rem;
+    box-shadow:0 2px 8px rgba(59,42,26,.04),0 1px 0 rgba(255,255,255,.8) inset;
+  }
+  .profil-lbl{font-size:.7rem;font-weight:700;letter-spacing:.06em;color:#9a8070;text-transform:uppercase;margin-bottom:.22rem}
+  .profil-val{font-size:.92rem;font-weight:600;color:var(--brown)}
+
+  /* ── FOOTER ── */
+  .site-footer{
+    background:linear-gradient(135deg,#1c0e04,var(--brown) 50%,#2e1a0a);
+    color:rgba(255,255,255,.65);
+    padding:1.4rem 2rem;flex-shrink:0;
+    display:flex;align-items:center;justify-content:space-between;
+    gap:1rem;flex-wrap:wrap;font-size:.82rem;
+    border-top:1px solid rgba(201,150,44,.15);
+    box-shadow:0 -4px 20px rgba(59,42,26,.15);
+  }
+  .footer-copy{color:rgba(255,255,255,.45);font-size:.76rem;}
+  .footer-copy strong{color:var(--gold-lt);}
+  .footer-links{display:flex;align-items:center;gap:.4rem;flex-wrap:wrap;}
+  .footer-link{color:rgba(255,255,255,.6);text-decoration:none;font-size:.78rem;transition:color .18s;cursor:pointer;padding:.25rem .4rem;border-radius:6px;display:flex;align-items:center;gap:.3rem;}
+  .footer-link:hover{color:var(--gold-lt);background:rgba(201,150,44,.1);}
+  .footer-sep{color:rgba(255,255,255,.2);font-size:.7rem;}
+  .footer-socials{display:flex;align-items:center;gap:.55rem;}
+  .footer-social-btn{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;text-decoration:none;font-size:.95rem;transition:opacity .18s,transform .18s;box-shadow:0 3px 10px rgba(0,0,0,.2);}
+  .footer-social-btn:hover{opacity:.85;transform:translateY(-2px);}
+  .footer-social-btn.wa{background:linear-gradient(135deg,#25d366,#128c7e);color:#fff;}
+  .footer-social-btn.ig{background:linear-gradient(135deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888);color:#fff;}
+
+  /* Modal syarat */
+  .syarat-box{max-width:520px;max-height:75vh;overflow-y:auto;}
+  .syarat-box h4{font-family:var(--fh);font-size:1.25rem;color:var(--brown);margin-bottom:1rem;}
+  .syarat-box p,.syarat-box li{font-size:.88rem;line-height:1.7;color:#4a3826;margin-bottom:.6rem;}
+  .syarat-box ol{padding-left:1.2rem;}
+
+  /* ── TOAST ── */
+  #toast-wrap{position:fixed;top:1.2rem;right:1.2rem;z-index:9999;display:flex;flex-direction:column;gap:.45rem}
+  .toast-item{min-width:270px;background:linear-gradient(135deg,var(--brown),#2e1a0a);color:#fff;padding:.82rem 1.15rem;border-radius:11px;font-size:.86rem;display:flex;align-items:center;gap:.6rem;box-shadow:0 8px 28px rgba(0,0,0,.28);animation:tIn .3s ease forwards}
+  .toast-item.success{border-left:4px solid var(--green)}
+  .toast-item.error{border-left:4px solid var(--red)}
+  .toast-item.info{border-left:4px solid var(--gold)}
+  .toast-item.out{animation:tOut .3s ease forwards}
+  @keyframes tIn{from{opacity:0;transform:translateX(50px)}to{opacity:1;transform:translateX(0)}}
+  @keyframes tOut{from{opacity:1;transform:translateX(0)}to{opacity:0;transform:translateX(50px)}}
+  .menu-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;margin-bottom:1.75rem}
+  @media(max-width:480px){.menu-grid{grid-template-columns:1fr}}
+  .menu-card{background:var(--card);border:1.5px solid var(--border);border-radius:var(--r);padding:1.75rem 1.5rem;cursor:pointer;transition:transform .2s,box-shadow .2s,border-color .2s;display:flex;flex-direction:column;gap:.65rem;position:relative;overflow:hidden}
+  .menu-card::after{content:'';position:absolute;bottom:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--gold),var(--rust));transform:scaleX(0);transition:transform .25s}
+  .menu-card:hover{transform:translateY(-3px);box-shadow:var(--sh);border-color:var(--gold)}
+  .menu-card:hover::after{transform:scaleX(1)}
+  .menu-icon{width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.3rem}
+  .menu-icon.borrow{background:rgba(201,150,44,.14);color:var(--gold)}
+  .menu-icon.ret{background:rgba(45,106,79,.12);color:var(--green)}
+  .menu-card h4{font-family:var(--fh);font-size:1.15rem;margin:0}
+  .menu-card p{color:#9a8070;font-size:.85rem;margin:0}
+
+  .panel{background:var(--card);border:1.5px solid var(--border);border-radius:var(--r);overflow:hidden;box-shadow:var(--sh)}
+  .panel-header{padding:1rem 1.5rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+  .panel-header h5{margin:0;font-family:var(--fh);font-size:1.05rem}
+  .panel-body{padding:1.5rem}
+  .btn-back{background:transparent;border:1.5px solid var(--border);border-radius:8px;padding:.32rem .8rem;font-size:.8rem;font-family:var(--fb);color:var(--brown);cursor:pointer;transition:background .18s;display:flex;align-items:center;gap:.35rem}
+  .btn-back:hover{background:var(--border)}
+
+  /* Table */
+  .book-table{width:100%;border-collapse:collapse;font-size:.88rem}
+  .book-table th{background:var(--brown);color:#fff;padding:.7rem .95rem;text-align:left;font-weight:600;font-size:.8rem;letter-spacing:.04em}
+  .book-table th:first-child{border-radius:8px 0 0 8px}
+  .book-table th:last-child{border-radius:0 8px 8px 0}
+  .book-table td{padding:.8rem .95rem;border-bottom:1px solid var(--border);vertical-align:middle}
+  .book-table tr:last-child td{border-bottom:none}
+  .book-table tr:hover td{background:rgba(201,150,44,.05)}
+  .stock-badge{display:inline-block;padding:.22rem .6rem;border-radius:20px;font-size:.75rem;font-weight:600}
+  .stock-badge.ok{background:rgba(45,106,79,.12);color:var(--green)}
+  .stock-badge.empty{background:rgba(181,55,58,.1);color:var(--red)}
+  .stock-badge.late{background:rgba(181,55,58,.1);color:var(--red)}
+  .btn-pinjam{background:linear-gradient(135deg,var(--gold),var(--rust));border:none;border-radius:7px;padding:.38rem .9rem;color:#fff;font-size:.8rem;font-weight:700;font-family:var(--fb);cursor:pointer;transition:opacity .2s}
+  .btn-pinjam:hover{opacity:.84}
+  .btn-pinjam:disabled{background:#ccc;cursor:not-allowed}
+
+  /* Return form */
+  .return-form{max-width:520px}
+  .input-row{display:flex;gap:.65rem;margin-bottom:.9rem}
+  .btn-cari{background:linear-gradient(135deg,var(--green),#1a4535);border:none;border-radius:10px;padding:.7rem 1.35rem;color:#fff;font-weight:700;font-size:.9rem;font-family:var(--fb);cursor:pointer;white-space:nowrap;flex-shrink:0;transition:opacity .2s}
+  .btn-cari:hover{opacity:.88}
+  .result-card{border-radius:12px;padding:1.35rem;margin-top:1.35rem;border:1.5px solid var(--border);display:none}
+  .result-card.show{display:block}
+  .result-card.fine{border-color:rgba(181,55,58,.4);background:rgba(181,55,58,.05)}
+  .result-card.good{border-color:rgba(45,106,79,.4);background:rgba(45,106,79,.05)}
+  .result-row{display:flex;justify-content:space-between;padding:.45rem 0;border-bottom:1px solid var(--border);font-size:.88rem}
+  .result-row:last-child{border-bottom:none}
+  .result-label{color:#9a8070}
+  .result-value{font-weight:600}
+  .fine-amount{font-size:1.25rem;color:var(--red);font-weight:700;font-family:var(--fh)}
+  .no-fine{font-size:1.05rem;color:var(--green);font-weight:700}
+  .btn-konfirmasi{width:100%;margin-top:1.1rem;background:linear-gradient(135deg,var(--green),#1a4535);border:none;border-radius:10px;padding:.75rem;color:#fff;font-weight:700;font-size:.92rem;font-family:var(--fb);cursor:pointer;transition:opacity .2s}
+  .btn-konfirmasi:hover{opacity:.88}
+
+  /* Empty */
+  .empty-state{text-align:center;padding:2.5rem 1rem;color:#b0a090}
+  .empty-state i{font-size:2.5rem;margin-bottom:.8rem;display:block}
+
+  /* Pinjam confirm modal */
+  .modal-info{background:var(--cream);border-radius:10px;padding:.95rem;margin:1rem 0;font-size:.9rem}
+  .modal-info .bk{font-weight:700;font-size:.97rem;margin-bottom:.3rem}
+  .modal-info span{color:#9a8070;font-size:.8rem}
+  .modal-actions{display:flex;gap:.65rem;justify-content:flex-end;margin-top:.9rem}
+  .btn-cancel{background:var(--border);border:none;border-radius:9px;padding:.55rem 1.15rem;font-family:var(--fb);font-weight:600;cursor:pointer}
+  .btn-confirm{background:linear-gradient(135deg,var(--gold),var(--rust));border:none;border-radius:9px;padding:.55rem 1.35rem;color:#fff;font-family:var(--fb);font-weight:700;cursor:pointer}
+
+  /* ═══════════════════════════════════════
+     DASHBOARD — FULL PREMIUM REDESIGN
+  ═══════════════════════════════════════ */
+
+  /* Background halaman dashboard */
+  #page-dashboard .page-body{
+    background:
+      radial-gradient(ellipse 80% 40% at 100% 0%,rgba(201,150,44,.10) 0%,transparent 60%),
+      radial-gradient(ellipse 60% 50% at 0% 100%,rgba(160,82,45,.08) 0%,transparent 55%),
+      linear-gradient(180deg,#f5efe4 0%,var(--cream) 60%);
+    padding:0;
+  }
+
+  /* Wrapper konten dashboard */
+  .dash-wrap{padding:1.5rem 1.5rem 0;position:relative}
+
+  /* Ornamen blur dekoratif */
+  .dash-orb{position:absolute;border-radius:50%;filter:blur(60px);pointer-events:none;z-index:0}
+  .dash-orb-1{width:300px;height:300px;background:rgba(201,150,44,.12);top:-80px;right:-60px}
+  .dash-orb-2{width:220px;height:220px;background:rgba(160,82,45,.09);bottom:100px;left:-50px}
+
+  /* Hero banner */
+  .dash-hero{
+    background:linear-gradient(135deg,#1c0e04 0%,#3B2A1A 40%,#5c3317 70%,#8a4a1a 100%);
+    border-radius:22px;padding:2.25rem 2rem 2rem;margin-bottom:1.5rem;
+    position:relative;overflow:hidden;color:#fff;
+    box-shadow:0 8px 40px rgba(59,42,26,.35),0 2px 8px rgba(201,150,44,.15);
+    z-index:1;
+  }
+  .dash-hero::before{
+    content:'';position:absolute;inset:0;
+    background:
+      radial-gradient(ellipse 80% 100% at 110% 50%,rgba(201,150,44,.22) 0%,transparent 60%),
+      radial-gradient(ellipse 50% 70% at -10% 80%,rgba(160,82,45,.18) 0%,transparent 55%),
+      url("data:image/svg+xml,%3Csvg width='80' height='80' viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.025'%3E%3Ccircle cx='40' cy='40' r='30'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+  }
+  .dash-hero::after{
+    content:'📚';position:absolute;right:1.5rem;bottom:1rem;
+    font-size:5rem;opacity:.06;line-height:1;pointer-events:none;
+  }
+  .dash-hero-inner{position:relative;z-index:1}
+  .dash-hero-time{
+    font-size:.72rem;color:rgba(255,255,255,.55);letter-spacing:.08em;
+    text-transform:uppercase;margin-bottom:.5rem;display:flex;align-items:center;gap:.4rem;
+  }
+  .dash-hero-time::before{content:'';display:inline-block;width:6px;height:6px;background:var(--gold-lt);border-radius:50%;animation:pulse 2s infinite}
+  @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.8)}}
+  .dash-hero h2{font-family:var(--fh);font-size:1.75rem;font-weight:900;color:#fff;margin-bottom:.4rem;line-height:1.15}
+  .dash-hero h2 .text-gold{color:var(--gold-lt)!important;text-shadow:0 0 20px rgba(232,188,92,.3)}
+  .dash-hero-sub{color:rgba(255,255,255,.62);font-size:.86rem;margin-bottom:1.25rem;line-height:1.5}
+  .dash-hero-chips{display:flex;gap:.55rem;flex-wrap:wrap}
+  .dash-chip{
+    background:rgba(255,255,255,.09);
+    border:1px solid rgba(255,255,255,.18);
+    backdrop-filter:blur(8px);
+    border-radius:20px;padding:.3rem .85rem;font-size:.74rem;
+    color:rgba(255,255,255,.88);display:flex;align-items:center;gap:.35rem;
+    transition:background .2s;
+  }
+  .dash-chip:hover{background:rgba(255,255,255,.15)}
+  .dash-chip i{color:var(--gold-lt);font-size:.75rem}
+
+  /* Quick-stat bar di dalam hero */
+  .dash-stats-bar{
+    display:flex;gap:0;margin-top:1.4rem;
+    background:rgba(0,0,0,.2);border-radius:12px;overflow:hidden;
+    border:1px solid rgba(255,255,255,.1);
+  }
+  .dash-stat-item{flex:1;padding:.7rem .5rem;text-align:center;border-right:1px solid rgba(255,255,255,.08)}
+  .dash-stat-item:last-child{border-right:none}
+  .dash-stat-num{font-family:var(--fh);font-size:1.2rem;font-weight:900;color:var(--gold-lt)}
+  .dash-stat-lbl{font-size:.63rem;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.05em;margin-top:.1rem}
+
+  /* ── MENU CARD premium ── */
+  .menu-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.1rem;margin-bottom:1.4rem;position:relative;z-index:1}
+  @media(max-width:480px){.menu-grid{grid-template-columns:1fr}}
+
+  .menu-card{
+    background:var(--card);
+    border:1px solid var(--border);
+    border-radius:18px;
+    padding:1.6rem 1.4rem;
+    cursor:pointer;
+    position:relative;overflow:hidden;
+    transition:transform .25s cubic-bezier(.34,1.56,.64,1),box-shadow .25s;
+    box-shadow:0 2px 12px rgba(59,42,26,.07);
+  }
+  /* Gradient shimmer kiri */
+  .menu-card::before{
+    content:'';position:absolute;top:0;left:0;bottom:0;width:4px;
+    background:linear-gradient(180deg,var(--gold),var(--rust));
+    border-radius:18px 0 0 18px;opacity:0;transition:opacity .25s;
+  }
+  /* Glow overlay saat hover */
+  .menu-card::after{
+    content:'';position:absolute;inset:0;
+    background:radial-gradient(ellipse 80% 60% at 10% 50%,rgba(201,150,44,.07) 0%,transparent 70%);
+    opacity:0;transition:opacity .25s;border-radius:18px;
+  }
+  .menu-card:hover{transform:translateY(-5px) scale(1.01);box-shadow:0 16px 40px rgba(59,42,26,.15),0 0 0 1px rgba(201,150,44,.2)}
+  .menu-card:hover::before{opacity:1}
+  .menu-card:hover::after{opacity:1}
+
+  .menu-card-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:.85rem}
+  .menu-icon{
+    width:50px;height:50px;border-radius:14px;
+    display:flex;align-items:center;justify-content:center;font-size:1.3rem;
+    transition:transform .25s cubic-bezier(.34,1.56,.64,1);
+  }
+  .menu-card:hover .menu-icon{transform:scale(1.12) rotate(-4deg)}
+  .menu-icon.borrow{
+    background:linear-gradient(135deg,rgba(201,150,44,.18),rgba(201,150,44,.06));
+    color:var(--gold);border:1px solid rgba(201,150,44,.2);
+  }
+  .menu-icon.ret{
+    background:linear-gradient(135deg,rgba(45,106,79,.16),rgba(45,106,79,.05));
+    color:var(--green);border:1px solid rgba(45,106,79,.2);
+  }
+  .menu-arrow{color:rgba(59,42,26,.2);font-size:.85rem;transition:transform .25s,color .25s;margin-top:.2rem}
+  .menu-card:hover .menu-arrow{transform:translateX(4px);color:var(--gold)}
+  .menu-card h4{font-family:var(--fh);font-size:1.08rem;color:var(--brown);margin-bottom:.25rem}
+  .menu-card p{color:#9a8070;font-size:.8rem;line-height:1.5}
+  .menu-card-badge{
+    display:inline-block;background:linear-gradient(135deg,rgba(201,150,44,.12),rgba(201,150,44,.06));
+    border:1px solid rgba(201,150,44,.2);color:var(--gold);
+    font-size:.64rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+    padding:.2rem .55rem;border-radius:8px;margin-top:.6rem;
+  }
+  .menu-card-badge.green{
+    background:linear-gradient(135deg,rgba(45,106,79,.12),rgba(45,106,79,.05));
+    border-color:rgba(45,106,79,.2);color:var(--green);
+  }
+
+  /* ── PANEL premium (peminjaman aktif) ── */
+  .panel{
+    background:linear-gradient(145deg,#fffdf8,#faf3e8);
+    border:1px solid var(--border);
+    border-radius:18px;overflow:hidden;
+    box-shadow:0 4px 20px rgba(59,42,26,.08),0 1px 0 rgba(201,150,44,.1) inset;
+    position:relative;z-index:1;
+  }
+  .panel::before{
+    content:'';position:absolute;top:0;left:0;right:0;height:3px;
+    background:linear-gradient(90deg,var(--gold),var(--rust),var(--gold));
+    background-size:200%;animation:shimmer 3s linear infinite;
+  }
+  @keyframes shimmer{0%{background-position:0%}100%{background-position:200%}}
+  .panel-header{
+    padding:1rem 1.4rem;border-bottom:1px solid rgba(232,223,208,.7);
+    display:flex;align-items:center;justify-content:space-between;
+    background:rgba(201,150,44,.03);
+  }
+  .panel-header h5{margin:0;font-family:var(--fh);font-size:1rem;display:flex;align-items:center;gap:.5rem}
+  .panel-header h5 .ph-icon{
+    width:28px;height:28px;border-radius:8px;
+    background:linear-gradient(135deg,var(--gold),var(--rust));
+    display:flex;align-items:center;justify-content:center;
+  }
+  .panel-header h5 .ph-icon i{color:#fff;font-size:.75rem}
+  .panel-body{padding:1.25rem 1.4rem;background:transparent}
+
+  /* ── BERITA STRIP dashboard premium ── */
+  .dash-berita-section{position:relative;z-index:1;margin-bottom:1.4rem}
+  .dash-section-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem}
+  .dash-section-title{font-family:var(--fh);font-size:1.15rem;color:var(--brown);display:flex;align-items:center;gap:.5rem}
+  .dash-section-title i{color:var(--gold)}
+  .dash-section-badge{font-size:.7rem;font-weight:700;color:var(--gold);background:rgba(201,150,44,.1);border:1px solid rgba(201,150,44,.2);border-radius:12px;padding:.2rem .6rem}
+
+  .dash-berita-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:.9rem;margin-bottom:.9rem}
+  @media(max-width:480px){.dash-berita-grid{grid-template-columns:1fr}}
+
+  .dash-berita-card{
+    background:var(--card);
+    border:1px solid var(--border);
+    border-radius:14px;overflow:hidden;cursor:pointer;
+    display:flex;gap:0;
+    transition:transform .22s cubic-bezier(.34,1.56,.64,1),box-shadow .22s,border-color .22s;
+    box-shadow:0 2px 8px rgba(59,42,26,.05);
+  }
+  .dash-berita-card:hover{
+    transform:translateY(-3px) scale(1.008);
+    box-shadow:0 10px 30px rgba(59,42,26,.12),0 0 0 1px rgba(201,150,44,.18);
+    border-color:rgba(201,150,44,.35);
+  }
+  .dash-berita-thumb{width:68px;min-height:76px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:1.4rem;position:relative}
+  .dash-berita-thumb::after{content:'';position:absolute;right:0;top:15%;bottom:15%;width:1px;background:var(--border)}
+  .dash-berita-content{padding:.7rem .85rem;flex:1}
+  .dash-berita-tag{font-size:.62rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--gold);margin-bottom:.18rem}
+  .dash-berita-judul{font-family:var(--fh);font-size:.86rem;font-weight:700;color:var(--brown);line-height:1.3;margin-bottom:.2rem}
+  .dash-berita-date{font-size:.68rem;color:#b0a090;display:flex;align-items:center;gap:.25rem}
+
+  .btn-semua-berita-dash{
+    width:100%;
+    background:linear-gradient(135deg,rgba(201,150,44,.08),rgba(160,82,45,.06));
+    border:1.5px solid rgba(201,150,44,.25);
+    border-radius:12px;padding:.8rem;
+    font-family:var(--fh);font-size:.92rem;font-weight:700;
+    color:var(--gold);cursor:pointer;
+    transition:all .22s;
+    display:flex;align-items:center;justify-content:center;gap:.5rem;
+    letter-spacing:.02em;
+  }
+  .btn-semua-berita-dash:hover{
+    background:linear-gradient(135deg,var(--gold),var(--rust));
+    border-color:transparent;color:#fff;
+    box-shadow:0 6px 20px rgba(201,150,44,.3);
+    transform:translateY(-1px);
+  }
+
+  /* ═══════════════════════════════════════
+     FOOTER / KONTAK (legacy — digantikan di atas)
+  ═══════════════════════════════════════ */
+
+  /* (styles lama digantikan — lihat blok DASHBOARD di atas) */
+
+  /* ── page-inner-wrap: padding konten halaman dalam ── */
+  .page-inner-wrap{padding:1.5rem;position:relative;z-index:1}
+
+  /* ── SECTION TITLE publik ──
+  </style>
+</head>
+<body>
+
+<div id="toast-wrap"></div>
+
+<!-- ═══════════════════════════════════════════════
+     MODAL: LOGIN
+═══════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-login">
+  <div class="modal-box">
+    <button class="modal-close" id="close-login">✕</button>
+    <div class="modal-icon"><i class="fas fa-sign-in-alt"></i></div>
+    <div class="modal-title">Masuk</div>
+    <p class="modal-sub">Gunakan NIS kamu untuk masuk</p>
+    <div class="form-group">
+      <label class="form-label">NOMOR INDUK SISWA (NIS)</label>
+      <input id="inp-nis" class="form-control" type="text" placeholder="Contoh: 10461" maxlength="10"/>
+      <div class="err-msg" id="login-err"></div>
+    </div>
+    <button class="btn-modal-primary" id="btn-masuk">Masuk</button>
+    <div class="modal-switch">Belum terdaftar? <a id="to-daftar">Daftar di sini</a></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     MODAL: DAFTAR
+═══════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-daftar">
+  <div class="modal-box">
+    <button class="modal-close" id="close-daftar">✕</button>
+    <div class="modal-icon" style="background:linear-gradient(135deg,var(--green),#1a4535)"><i class="fas fa-user-plus"></i></div>
+    <div class="modal-title">Daftar</div>
+    <p class="modal-sub">Masukkan NIS untuk mendaftarkan akun</p>
+    <div class="form-group">
+      <label class="form-label">NOMOR INDUK SISWA (NIS)</label>
+      <input id="inp-nis-daftar" class="form-control" type="text" placeholder="Contoh: 10461" maxlength="10"/>
+      <div class="err-msg" id="daftar-err"></div>
+      <div class="ok-msg"  id="daftar-ok"></div>
+    </div>
+    <button class="btn-modal-primary" id="btn-daftar" style="background:linear-gradient(135deg,var(--green),#1a4535)">Daftar & Masuk</button>
+    <div class="modal-switch">Sudah punya akun? <a id="to-login">Masuk di sini</a></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     MODAL: KONFIRMASI PINJAM
+═══════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-confirm">
+  <div class="modal-box">
+    <h5 style="font-family:var(--fh);font-size:1.18rem;margin-bottom:.4rem"><i class="fas fa-book-open" style="color:var(--gold);margin-right:.45rem"></i>Konfirmasi Peminjaman</h5>
+    <p style="color:#9a8070;font-size:.85rem">Apakah kamu yakin ingin meminjam buku ini?</p>
+    <div class="modal-info">
+      <div class="bk" id="m-judul">—</div>
+      <span id="m-kode">—</span><br><span id="m-tanggal">—</span>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" id="btn-batal">Batal</button>
+      <button class="btn-confirm" id="btn-ya-pinjam">Ya, Pinjam</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     MODAL: DETAIL BERITA
+═══════════════════════════════════════════════ -->
+<div class="berita-overlay" id="berita-overlay">
+  <div class="berita-detail-box">
+    <button class="btn-tutup" id="btn-tutup-berita"><i class="fas fa-arrow-left"></i> Kembali</button>
+    <div class="bd-tag" id="bd-tag">—</div>
+    <div class="bd-judul" id="bd-judul">—</div>
+    <div class="bd-meta"  id="bd-meta">—</div>
+    <div class="bd-body"  id="bd-body">—</div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     PAGE 1: BERANDA (publik)
+═══════════════════════════════════════════════ -->
+<div id="page-beranda" class="page active">
+  <!-- Navbar publik -->
+  <nav class="app-nav" id="nav-beranda">
+    <a class="nav-brand" href="#"><div class="nav-brand-icon"><i class="fas fa-book-open"></i></div><span class="nav-brand-text">SiPustaka</span></a>
+    <!-- Desktop -->
+    <div class="nav-center">
+      <button class="nav-link" id="dnb-berita"><i class="fas fa-newspaper"></i> Berita</button>
+    </div>
+    <div class="nav-right">
+      <button class="nav-link" id="dnb-login" style="background:rgba(201,150,44,.18);color:var(--gold-lt)"><i class="fas fa-sign-in-alt"></i> Masuk</button>
+      <button class="nav-link" id="dnb-daftar" style="background:linear-gradient(135deg,var(--gold),var(--rust));color:#fff;padding:.42rem 1rem"><i class="fas fa-user-plus"></i> Daftar</button>
+    </div>
+    <!-- Mobile hamburger -->
+    <button class="btn-hamburger" id="ham-beranda"><span></span><span></span><span></span></button>
+    <div class="nav-dropdown" id="dd-beranda">
+      <div class="dd-item" data-dd="berita-pub"><i class="fas fa-newspaper"></i> Berita</div>
+      <div class="dd-item" data-dd="login"><i class="fas fa-sign-in-alt"></i> Masuk</div>
+      <div class="dd-item" data-dd="daftar"><i class="fas fa-user-plus"></i> Daftar</div>
+    </div>
+  </nav>
+
+  <!-- Scrollable content -->
+  <div class="page-body" style="padding:0">
+    <!-- Hero -->
+    <div class="hero">
+      <div class="hero-inner">
+        <div class="hero-badge"><i class="fas fa-star" style="margin-right:.35rem"></i>Perpustakaan Digital SMAN 1 Kutowinangun</div>
+        <h1>Selamat Datang di <span style="color:var(--gold-lt)">SiPustaka</span></h1>
+        <p>Platform peminjaman buku sekolah yang mudah, cepat, dan menyenangkan. Temukan ribuan buku dan kelola pinjaman kamu kapan saja.</p>
+        <div class="hero-actions">
+          <button class="btn-hero-primary" id="hero-mulai"><i class="fas fa-rocket"></i> Mulai Sekarang</button>
+          <button class="btn-hero-ghost" id="hero-berita"><i class="fas fa-newspaper"></i> Baca Berita</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-strip">
+      <div class="stat-item"><div class="stat-num">36</div><div class="stat-lbl">Siswa Terdaftar</div></div>
+      <div class="stat-item"><div class="stat-num">8+</div><div class="stat-lbl">Koleksi Buku</div></div>
+      <div class="stat-item"><div class="stat-num">5</div><div class="stat-lbl">Berita Literasi</div></div>
+      <div class="stat-item"><div class="stat-num">0</div><div class="stat-lbl">Denda Hari Ini</div></div>
+    </div>
+
+    <!-- Berita preview -->
+    <div style="padding:2rem 1.5rem">
+      <div class="inner">
+        <div class="section-title"><i class="fas fa-newspaper" style="color:var(--gold)"></i> Berita Terkini</div>
+        <div class="berita-grid" id="beranda-berita-grid"></div>
+        <div style="text-align:center;margin-top:.5rem">
+          <button class="btn-hero-ghost" id="semua-berita" style="border-color:var(--border);color:var(--brown);margin:0 auto"><i class="fas fa-list"></i> Lihat Semua Berita</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer beranda -->
+    <footer class="site-footer">
+      <div class="footer-copy">© 2026 <strong>SiPustaka</strong> · SMAN 1 Kutowinangun</div>
+      <div class="footer-links">
+        <span class="footer-link" id="footer-syarat-beranda"><i class="fas fa-file-alt"></i> Syarat &amp; Ketentuan</span>
+      </div>
+      <div class="footer-socials">
+        <a class="footer-social-btn wa" href="https://wa.me/6208812779803" target="_blank" title="WhatsApp"><i class="fab fa-whatsapp"></i></a>
+        <a class="footer-social-btn ig" href="https://instagram.com/hudathorikhul" target="_blank" title="Instagram"><i class="fab fa-instagram"></i></a>
+      </div>
+    </footer>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     PAGE 2: DASHBOARD (setelah login)
+═══════════════════════════════════════════════ -->
+<div id="page-dashboard" class="page">
+  <nav class="app-nav" id="nav-dash">
+    <a class="nav-brand" href="#"><div class="nav-brand-icon"><i class="fas fa-book-open"></i></div><span class="nav-brand-text">SiPustaka</span></a>
+    <!-- Desktop -->
+    <div class="nav-center">
+      <button class="nav-link active-link" id="dnav-beranda"><i class="fas fa-home"></i> Beranda</button>
+      <button class="nav-link" id="dnav-berita"><i class="fas fa-newspaper"></i> Berita</button>
+    </div>
+    <div class="nav-right">
+      <div class="nav-avatar-btn" id="dnav-profil" title="Profil"><i class="fas fa-user"></i></div>
+      <button class="btn-nav-logout" id="dnav-logout"><i class="fas fa-sign-out-alt"></i> Keluar</button>
+    </div>
+    <!-- Mobile hamburger -->
+    <button class="btn-hamburger" id="ham-dash"><span></span><span></span><span></span></button>
+    <div class="nav-dropdown" id="dd-dash">
+      <div class="dd-item" data-dd="beranda-user"><i class="fas fa-home"></i> Beranda</div>
+      <div class="dd-item" data-dd="berita-user"><i class="fas fa-newspaper"></i> Berita</div>
+      <div class="dd-item" data-dd="profil"><i class="fas fa-user-circle"></i> Profil</div>
+      <div class="dd-item danger" data-dd="logout"><i class="fas fa-sign-out-alt"></i> Keluar</div>
+    </div>
+  </nav>
+  <div class="page-body">
+    <div class="dash-wrap">
+      <!-- Ornamen blur -->
+      <div class="dash-orb dash-orb-1"></div>
+      <div class="dash-orb dash-orb-2"></div>
+
+      <div class="inner" style="position:relative;z-index:1">
+
+        <!-- ── HERO BANNER ── -->
+        <div class="dash-hero">
+          <div class="dash-hero-inner">
+            <div class="dash-hero-time" id="dash-time">—</div>
+            <h2>Halo, <span id="dash-nama" class="text-gold">—</span> 👋</h2>
+            <p class="dash-hero-sub">Selamat datang kembali di perpustakaan digital SMAN 1 Kutowinangun.</p>
+            <div class="dash-hero-chips">
+              <div class="dash-chip"><i class="fas fa-school"></i> SMAN 1 Kutowinangun</div>
+              <div class="dash-chip"><i class="fas fa-chalkboard-teacher"></i> Kelas X.E5</div>
+              <div class="dash-chip"><i class="fas fa-book"></i> Perpustakaan Digital</div>
+            </div>
+            <!-- Quick stats -->
+            <div class="dash-stats-bar">
+              <div class="dash-stat-item">
+                <div class="dash-stat-num">8+</div>
+                <div class="dash-stat-lbl">Koleksi Buku</div>
+              </div>
+              <div class="dash-stat-item">
+                <div class="dash-stat-num">36</div>
+                <div class="dash-stat-lbl">Siswa</div>
+              </div>
+              <div class="dash-stat-item">
+                <div class="dash-stat-num" id="dash-stat-aktif">0</div>
+                <div class="dash-stat-lbl">Pinjaman Aktif</div>
+              </div>
+              <div class="dash-stat-item">
+                <div class="dash-stat-num">15</div>
+                <div class="dash-stat-lbl">Berita</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── MENU CARD ── -->
+        <div class="menu-grid">
+          <div class="menu-card" id="menu-pinjam">
+            <div class="menu-card-top">
+              <div class="menu-icon borrow"><i class="fas fa-hand-holding-heart"></i></div>
+              <i class="fas fa-chevron-right menu-arrow"></i>
+            </div>
+            <h4>Meminjam Buku</h4>
+            <p>Lihat katalog buku dan ajukan peminjaman dengan mudah</p>
+            <div class="menu-card-badge"><i class="fas fa-book-open" style="margin-right:.3rem"></i>Katalog Tersedia</div>
+          </div>
+          <div class="menu-card" id="menu-kembali">
+            <div class="menu-card-top">
+              <div class="menu-icon ret"><i class="fas fa-undo-alt"></i></div>
+              <i class="fas fa-chevron-right menu-arrow"></i>
+            </div>
+            <h4>Mengembalikan Buku</h4>
+            <p>Kembalikan buku dan cek perhitungan denda keterlambatan</p>
+            <div class="menu-card-badge green"><i class="fas fa-check-circle" style="margin-right:.3rem"></i>Cek Denda</div>
+          </div>
+        </div>
+
+        <!-- ── PANEL PEMINJAMAN AKTIF ── -->
+        <div class="panel" style="margin-bottom:1.5rem">
+          <div class="panel-header">
+            <h5>
+              <div class="ph-icon"><i class="fas fa-list-ul"></i></div>
+              Peminjaman Aktif Saya
+            </h5>
+          </div>
+          <div class="panel-body" id="aktif-wrap"></div>
+        </div>
+
+        <!-- ── BERITA STRIP ── -->
+        <div class="dash-berita-section">
+          <div class="dash-section-hdr">
+            <div class="dash-section-title"><i class="fas fa-newspaper"></i> Berita &amp; Informasi Terbaru</div>
+            <div class="dash-section-badge" id="dash-berita-count">15 artikel</div>
+          </div>
+          <div class="dash-berita-grid" id="dash-berita-grid"></div>
+          <button class="btn-semua-berita-dash" id="dash-semua-berita">
+            <i class="fas fa-th-list"></i> Lihat Semua Berita
+          </button>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Footer dashboard -->
+    <footer class="site-footer">
+      <div class="footer-copy">© 2026 <strong>SiPustaka</strong> · SMAN 1 Kutowinangun</div>
+      <div class="footer-links">
+        <span class="footer-link" id="footer-syarat-dash"><i class="fas fa-file-alt"></i> Syarat &amp; Ketentuan</span>
+      </div>
+      <div class="footer-socials">
+        <a class="footer-social-btn wa" href="https://wa.me/6208812779803" target="_blank" title="WhatsApp"><i class="fab fa-whatsapp"></i></a>
+        <a class="footer-social-btn ig" href="https://instagram.com/hudathorikhul" target="_blank" title="Instagram"><i class="fab fa-instagram"></i></a>
+      </div>
+    </footer>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     PAGE 3: PINJAM
+═══════════════════════════════════════════════ -->
+<div id="page-pinjam" class="page">
+  <nav class="app-nav" id="nav-pinjam">
+    <a class="nav-brand" href="#"><div class="nav-brand-icon"><i class="fas fa-book-open"></i></div><span class="nav-brand-text">SiPustaka</span></a>
+    <div class="nav-center">
+      <button class="nav-link" id="pnav-beranda"><i class="fas fa-home"></i> Beranda</button>
+      <button class="nav-link" id="pnav-berita"><i class="fas fa-newspaper"></i> Berita</button>
+    </div>
+    <div class="nav-right">
+      <div class="nav-avatar-btn" id="pnav-profil" title="Profil"><i class="fas fa-user"></i></div>
+      <button class="btn-nav-logout" id="pnav-logout"><i class="fas fa-sign-out-alt"></i> Keluar</button>
+    </div>
+    <button class="btn-hamburger" id="ham-pinjam"><span></span><span></span><span></span></button>
+    <div class="nav-dropdown" id="dd-pinjam">
+      <div class="dd-item" data-dd="beranda-user"><i class="fas fa-home"></i> Beranda</div>
+      <div class="dd-item" data-dd="berita-user"><i class="fas fa-newspaper"></i> Berita</div>
+      <div class="dd-item" data-dd="profil"><i class="fas fa-user-circle"></i> Profil</div>
+      <div class="dd-item danger" data-dd="logout"><i class="fas fa-sign-out-alt"></i> Keluar</div>
+    </div>
+  </nav>
+  <div class="page-body">
+    <div class="page-inner-wrap inner">
+      <div class="panel">
+        <div class="panel-header">
+          <h5><div class="ph-icon"><i class="fas fa-hand-holding-heart"></i></div> Daftar Buku Tersedia</h5>
+          <button class="btn-back" id="btn-back-pinjam"><i class="fas fa-arrow-left"></i> Kembali</button>
+        </div>
+        <div class="panel-body" style="overflow-x:auto">
+          <table class="book-table">
+            <thead><tr><th>Kode</th><th>Judul Buku</th><th>Stok</th><th>Aksi</th></tr></thead>
+            <tbody id="tbody-buku"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <footer class="site-footer">
+      <div class="footer-copy">© 2026 <strong>SiPustaka</strong> · SMAN 1 Kutowinangun</div>
+      <div class="footer-links">
+        <span class="footer-link" id="fp-syarat-pinjam"><i class="fas fa-file-alt"></i> Syarat &amp; Ketentuan</span>
+      </div>
+      <div class="footer-socials">
+        <a class="footer-social-btn wa" href="https://wa.me/6208812779803" target="_blank" title="WhatsApp"><i class="fab fa-whatsapp"></i></a>
+        <a class="footer-social-btn ig" href="https://instagram.com/hudathorikhul" target="_blank" title="Instagram"><i class="fab fa-instagram"></i></a>
+      </div>
+    </footer>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     PAGE 4: KEMBALI
+═══════════════════════════════════════════════ -->
+<div id="page-kembali" class="page">
+  <nav class="app-nav" id="nav-kembali">
+    <a class="nav-brand" href="#"><div class="nav-brand-icon"><i class="fas fa-book-open"></i></div><span class="nav-brand-text">SiPustaka</span></a>
+    <div class="nav-center">
+      <button class="nav-link" id="knav-beranda"><i class="fas fa-home"></i> Beranda</button>
+      <button class="nav-link" id="knav-berita"><i class="fas fa-newspaper"></i> Berita</button>
+    </div>
+    <div class="nav-right">
+      <div class="nav-avatar-btn" id="knav-profil" title="Profil"><i class="fas fa-user"></i></div>
+      <button class="btn-nav-logout" id="knav-logout"><i class="fas fa-sign-out-alt"></i> Keluar</button>
+    </div>
+    <button class="btn-hamburger" id="ham-kembali"><span></span><span></span><span></span></button>
+    <div class="nav-dropdown" id="dd-kembali">
+      <div class="dd-item" data-dd="beranda-user"><i class="fas fa-home"></i> Beranda</div>
+      <div class="dd-item" data-dd="berita-user"><i class="fas fa-newspaper"></i> Berita</div>
+      <div class="dd-item" data-dd="profil"><i class="fas fa-user-circle"></i> Profil</div>
+      <div class="dd-item danger" data-dd="logout"><i class="fas fa-sign-out-alt"></i> Keluar</div>
+    </div>
+  </nav>
+  <div class="page-body">
+    <div class="page-inner-wrap inner">
+      <div class="panel">
+        <div class="panel-header">
+          <h5><div class="ph-icon"><i class="fas fa-undo-alt"></i></div> Pengembalian Buku</h5>
+          <button class="btn-back" id="btn-back-kembali"><i class="fas fa-arrow-left"></i> Kembali</button>
+        </div>
+        <div class="panel-body">
+          <div class="return-form">
+            <label class="form-label">KODE BUKU</label>
+            <div class="input-row">
+              <input id="inp-kode" class="form-control" type="text" placeholder="Contoh: BK001"/>
+              <button class="btn-cari" id="btn-cari"><i class="fas fa-search" style="margin-right:.3rem"></i>Cari</button>
+            </div>
+            <div id="result-card" class="result-card">
+              <div class="result-row"><span class="result-label">Nama Siswa</span><span class="result-value" id="r-nama">—</span></div>
+              <div class="result-row"><span class="result-label">NIS</span><span class="result-value" id="r-nis">—</span></div>
+              <div class="result-row"><span class="result-label">Judul Buku</span><span class="result-value" id="r-judul">—</span></div>
+              <div class="result-row"><span class="result-label">Tanggal Pinjam</span><span class="result-value" id="r-tgl-pinjam">—</span></div>
+              <div class="result-row"><span class="result-label">Batas Kembali</span><span class="result-value" id="r-tgl-batas">—</span></div>
+              <div class="result-row"><span class="result-label">Keterlambatan</span><span class="result-value" id="r-terlambat">—</span></div>
+              <div class="result-row" style="margin-top:.45rem;padding-top:.7rem;border-top:2px solid rgba(232,223,208,.7)">
+                <span class="result-label" style="font-weight:700">Total Denda</span>
+                <span class="result-value" id="r-denda">—</span>
+              </div>
+              <button class="btn-konfirmasi" id="btn-konfirmasi-kembali"><i class="fas fa-check-circle" style="margin-right:.45rem"></i>Konfirmasi Pengembalian</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <footer class="site-footer">
+      <div class="footer-copy">© 2026 <strong>SiPustaka</strong> · SMAN 1 Kutowinangun</div>
+      <div class="footer-links">
+        <span class="footer-link" id="fp-syarat-kembali"><i class="fas fa-file-alt"></i> Syarat &amp; Ketentuan</span>
+      </div>
+      <div class="footer-socials">
+        <a class="footer-social-btn wa" href="https://wa.me/6208812779803" target="_blank" title="WhatsApp"><i class="fab fa-whatsapp"></i></a>
+        <a class="footer-social-btn ig" href="https://instagram.com/hudathorikhul" target="_blank" title="Instagram"><i class="fab fa-instagram"></i></a>
+      </div>
+    </footer>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     PAGE 5: PROFIL
+═══════════════════════════════════════════════ -->
+<div id="page-profil" class="page">
+  <nav class="app-nav" id="nav-profil">
+    <a class="nav-brand" href="#"><div class="nav-brand-icon"><i class="fas fa-book-open"></i></div><span class="nav-brand-text">SiPustaka</span></a>
+    <div class="nav-center">
+      <button class="nav-link" id="pronav-beranda"><i class="fas fa-home"></i> Beranda</button>
+      <button class="nav-link" id="pronav-berita"><i class="fas fa-newspaper"></i> Berita</button>
+    </div>
+    <div class="nav-right">
+      <div class="nav-avatar-btn active-link" title="Profil"><i class="fas fa-user"></i></div>
+      <button class="btn-nav-logout" id="pronav-logout"><i class="fas fa-sign-out-alt"></i> Keluar</button>
+    </div>
+    <button class="btn-hamburger" id="ham-profil"><span></span><span></span><span></span></button>
+    <div class="nav-dropdown" id="dd-profil">
+      <div class="dd-item" data-dd="beranda-user"><i class="fas fa-home"></i> Beranda</div>
+      <div class="dd-item" data-dd="berita-user"><i class="fas fa-newspaper"></i> Berita</div>
+      <div class="dd-item" data-dd="profil"><i class="fas fa-user-circle"></i> Profil</div>
+      <div class="dd-item danger" data-dd="logout"><i class="fas fa-sign-out-alt"></i> Keluar</div>
+    </div>
+  </nav>
+  <div class="page-body">
+    <div class="page-inner-wrap inner">
+      <div style="display:flex;align-items:center;gap:.7rem;margin-bottom:1.5rem">
+        <button class="btn-back" id="btn-back-profil"><i class="fas fa-arrow-left"></i> Kembali</button>
+        <span style="font-family:var(--fh);font-size:1.08rem;color:var(--brown)">Profil Saya</span>
+      </div>
+      <div class="profil-wrap">
+        <div class="profil-card">
+          <div class="profil-hdr">
+            <div class="profil-avatar-wrap">
+              <div class="profil-avatar"><i class="fas fa-user-graduate"></i></div>
+            </div>
+          </div>
+          <div class="profil-body">
+            <div class="profil-nama" id="profil-nama">—</div>
+            <div class="profil-nis" id="profil-nis-badge">NIS —</div>
+            <div class="profil-grid">
+              <div class="profil-item"><div class="profil-lbl"><i class="fas fa-id-card" style="margin-right:.28rem"></i>NIS</div><div class="profil-val" id="profil-nis-val">—</div></div>
+              <div class="profil-item"><div class="profil-lbl"><i class="fas fa-chalkboard-teacher" style="margin-right:.28rem"></i>Kelas</div><div class="profil-val">X.E5</div></div>
+              <div class="profil-item" style="grid-column:1/-1"><div class="profil-lbl"><i class="fas fa-school" style="margin-right:.28rem"></i>Sekolah</div><div class="profil-val">SMAN 1 KUTOWINANGUN</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <footer class="site-footer">
+      <div class="footer-copy">© 2026 <strong>SiPustaka</strong> · SMAN 1 Kutowinangun</div>
+      <div class="footer-links">
+        <span class="footer-link" id="fp-syarat-profil"><i class="fas fa-file-alt"></i> Syarat &amp; Ketentuan</span>
+      </div>
+      <div class="footer-socials">
+        <a class="footer-social-btn wa" href="https://wa.me/6208812779803" target="_blank" title="WhatsApp"><i class="fab fa-whatsapp"></i></a>
+        <a class="footer-social-btn ig" href="https://instagram.com/hudathorikhul" target="_blank" title="Instagram"><i class="fab fa-instagram"></i></a>
+      </div>
+    </footer>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     PAGE 6: BERITA (full)
+═══════════════════════════════════════════════ -->
+<div id="page-berita" class="page">
+  <nav class="app-nav" id="nav-berita">
+    <a class="nav-brand" href="#"><div class="nav-brand-icon"><i class="fas fa-book-open"></i></div><span class="nav-brand-text">SiPustaka</span></a>
+    <div class="nav-center" id="berita-nav-center"></div>
+    <div class="nav-right"  id="berita-nav-right"></div>
+    <button class="btn-hamburger" id="ham-berita"><span></span><span></span><span></span></button>
+    <div class="nav-dropdown" id="dd-berita"></div>
+  </nav>
+  <div class="page-body">
+    <div class="page-inner-wrap inner">
+      <div style="display:flex;align-items:center;gap:.7rem;margin-bottom:1.5rem">
+        <button class="btn-back" id="btn-back-berita"><i class="fas fa-arrow-left"></i> Kembali</button>
+        <span style="font-family:var(--fh);font-size:1.08rem;color:var(--brown)">Berita Literasi</span>
+      </div>
+      <div class="berita-grid" id="berita-full-grid"></div>
+    </div>
+    <footer class="site-footer">
+      <div class="footer-copy">© 2026 <strong>SiPustaka</strong> · SMAN 1 Kutowinangun</div>
+      <div class="footer-links">
+        <span class="footer-link" id="fp-syarat-berita"><i class="fas fa-file-alt"></i> Syarat &amp; Ketentuan</span>
+      </div>
+      <div class="footer-socials">
+        <a class="footer-social-btn wa" href="https://wa.me/6208812779803" target="_blank" title="WhatsApp"><i class="fab fa-whatsapp"></i></a>
+        <a class="footer-social-btn ig" href="https://instagram.com/hudathorikhul" target="_blank" title="Instagram"><i class="fab fa-instagram"></i></a>
+      </div>
+    </footer>
+  </div>
+</div>
+
+<!-- Firebase Compat -->
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<script>
+/* ═════════════════════════════════════
+   FIREBASE
+═════════════════════════════════════ */
+var db = null;
+try {
+  firebase.initializeApp({
+    apiKey:"AIzaSyAOQUxBnM4D5Z6NOFWIyXLuUt1dC-kBkeo",
+    authDomain:"pustaka-93626.firebaseapp.com",
+    projectId:"pustaka-93626",
+    storageBucket:"pustaka-93626.firebasestorage.app",
+    messagingSenderId:"833305723482",
+    appId:"1:833305723482:web:07b5b4dce4264ca0d70e63"
+  });
+  db = firebase.firestore();
+} catch(e){ console.warn('Firebase:',e.message); }
+
+/* ═════════════════════════════════════
+   DATA SISWA
+═════════════════════════════════════ */
+var SISWA=[
+  {nis:'10461',nama:'Adinda Shabrina Ghaisani'},
+  {nis:'10469',nama:'Ahmad Zaki Nur Fitriadi'},
+  {nis:'10475',nama:'Alfaizza Shafarani'},
+  {nis:'10488',nama:'Amalina Huril Ain'},
+  {nis:'10501',nama:'Artika Althaaf Oktavia'},
+  {nis:'10520',nama:'Azzah Maiza Tsabita'},
+  {nis:'10524',nama:'Bayu Diza Afif Pratama'},
+  {nis:'10525',nama:'Beauty Kasacima Raya'},
+  {nis:'10543',nama:'Desfita Amira Tungga Dewi'},
+  {nis:'10551',nama:'Diana Larasati Puspita Ningrum'},
+  {nis:'10562',nama:'Duta Urban Harum'},
+  {nis:'10565',nama:'Dyah Palupi Kusumaningrum'},
+  {nis:'10576',nama:'Evelyna Zazkia Rakhma'},
+  {nis:'10588',nama:'Fatur Rohman'},
+  {nis:'10600',nama:"Hafiyatun Ni'mah"},
+  {nis:'10613',nama:'Ida Sherlya Yuanita'},
+  {nis:'10615',nama:'Ihsan Kamil Alfahd'},
+  {nis:'10624',nama:'Izziany Riskia Ramadani'},
+  {nis:'10632',nama:'Kevin Cahya Ardyanta'},
+  {nis:'10636',nama:'Khansa Emma Kinasih'},
+  {nis:'10651',nama:'Malihatun Nisa'},
+  {nis:'10670',nama:'Muhammad Arfa Abdullah'},
+  {nis:'10677',nama:'Muhammad Qyanu Athaya Kamil'},
+  {nis:'10684',nama:'Nabila Alfha Ufairah'},
+  {nis:'10694',nama:'Najla Audra Awaliyah'},
+  {nis:'10700',nama:'Nathan Huda Assidqi'},
+  {nis:'10718',nama:'Putri Aulia Zahra'},
+  {nis:'10731',nama:'Riska Zahrotus Zamaniyah'},
+  {nis:'10745',nama:'Sagita Aulia Rizki Saputri'},
+  {nis:'10756',nama:'Sheza Zazkiya Safaraeni'},
+  {nis:'10766',nama:"Syafa'ati Tri Utami"},
+  {nis:'10777',nama:"Thorikhul Huda Assya'bani"},
+  {nis:'10778',nama:'Tiara Larasati'},
+  {nis:'10787',nama:'Vindi Setyaningsih'},
+  {nis:'10797',nama:'Zahra Kamilah Zein'},
+  {nis:'10803',nama:'Zefanya Andrea Wardani'}
+];
+
+var BUKU=[
+  {kode:'BK001',judul:'Laskar Pelangi',stok:3},
+  {kode:'BK002',judul:'Bumi Manusia',stok:2},
+  {kode:'BK003',judul:'Sang Pemimpi',stok:4},
+  {kode:'BK004',judul:'Negeri 5 Menara',stok:2},
+  {kode:'BK005',judul:'Perahu Kertas',stok:0},
+  {kode:'BK006',judul:'Ayat-Ayat Cinta',stok:1},
+  {kode:'BK007',judul:'Dilan: Dia Adalah Dilanku',stok:3},
+  {kode:'BK008',judul:'Pulang — Tere Liye',stok:2}
+];
+
+var BERITA=[
+  {id:1,tag:'Literasi',thumb:'t1',icon:'fa-book-reader',judul:'Gerakan Membaca 15 Menit Sehari Terbukti Tingkatkan Prestasi Siswa',ringkas:'Penelitian terbaru menunjukkan kebiasaan membaca 15 menit sehari secara konsisten dapat meningkatkan nilai akademik siswa hingga 23%.',tanggal:'5 Mei 2025',isi:'<p>Sebuah penelitian yang dilakukan oleh Pusat Literasi Nasional Indonesia menunjukkan hasil menggembirakan bahwa kebiasaan membaca selama 15 menit setiap hari secara konsisten mampu meningkatkan nilai akademik siswa hingga 23 persen dalam kurun waktu satu semester.</p><p>Studi yang melibatkan lebih dari 2.000 siswa SMA di seluruh Indonesia ini menemukan bahwa siswa yang rutin membaca menunjukkan kemampuan pemahaman bacaan, kosakata, dan kemampuan berpikir kritis yang jauh lebih baik dibandingkan rekan-rekan mereka yang jarang membaca.</p><p>"Tidak perlu waktu yang lama. Yang terpenting adalah konsistensi. Lima belas menit setiap hari jauh lebih efektif daripada membaca dua jam hanya di akhir pekan," ungkap Dr. Hendra Wijaya, peneliti utama dari studi tersebut.</p>'},
+  {id:2,tag:'Perpustakaan',thumb:'t2',icon:'fa-building-columns',judul:'SMAN 1 Kutowinangun Raih Penghargaan Perpustakaan Terbaik Se-Kabupaten',ringkas:'Perpustakaan SMAN 1 Kutowinangun berhasil meraih penghargaan perpustakaan sekolah terbaik tingkat Kabupaten Kebumen tahun 2025.',tanggal:'28 Apr 2025',isi:'<p>Kabar membanggakan datang dari SMAN 1 Kutowinangun. Perpustakaan sekolah ini berhasil meraih penghargaan sebagai Perpustakaan Sekolah Terbaik tingkat Kabupaten Kebumen tahun 2025.</p><p>Penilaian dilakukan berdasarkan sejumlah kriteria, mulai dari kelengkapan koleksi buku, sistem pengelolaan perpustakaan, tingkat kunjungan siswa, hingga inovasi layanan yang ditawarkan. SMAN 1 Kutowinangun unggul di hampir semua aspek penilaian.</p><p>Kepala sekolah menyampaikan rasa bangga dan terima kasih kepada seluruh tim perpustakaan dan siswa yang telah aktif menggunakan fasilitas perpustakaan.</p>'},
+  {id:3,tag:'Program',thumb:'t3',icon:'fa-star',judul:'Program "Satu Siswa Satu Buku" Resmi Diluncurkan di Perpustakaan',ringkas:'Perpustakaan sekolah meluncurkan program donasi buku yang mengajak setiap siswa menyumbangkan satu buku layak baca.',tanggal:'20 Apr 2025',isi:'<p>Perpustakaan SMAN 1 Kutowinangun secara resmi meluncurkan program "Satu Siswa Satu Buku" pada Senin, 20 April 2025. Program ini merupakan inisiatif untuk memperkaya koleksi perpustakaan sekaligus menumbuhkan rasa memiliki siswa terhadap fasilitas sekolah.</p><p>Dalam dua minggu pertama, program ini telah berhasil mengumpulkan lebih dari 180 buku dari berbagai kelas. "Antusias siswa sangat luar biasa," ujar koordinator perpustakaan.</p>'},
+  {id:4,tag:'Teknologi',thumb:'t4',icon:'fa-mobile-screen',judul:'SiPustaka: Inovasi Digital untuk Kemudahan Layanan Perpustakaan Sekolah',ringkas:'Sistem informasi perpustakaan berbasis web kini hadir untuk memudahkan siswa meminjam dan mengembalikan buku tanpa antrean panjang.',tanggal:'12 Apr 2025',isi:'<p>Era digitalisasi telah menyentuh berbagai aspek kehidupan, termasuk pengelolaan perpustakaan sekolah. SMAN 1 Kutowinangun kini telah menghadirkan SiPustaka — Sistem Informasi Perpustakaan berbasis web yang memudahkan siswa dalam mengakses layanan perpustakaan kapan saja dan di mana saja.</p><p>Dengan SiPustaka, siswa cukup membuka aplikasi melalui perangkat masing-masing, memasukkan NIS, lalu memilih buku yang ingin dipinjam. Proses yang dulunya memerlukan antrean kini bisa dilakukan hanya dalam hitungan detik.</p>'},
+  {id:5,tag:'Kegiatan',thumb:'t5',icon:'fa-trophy',judul:'Lomba Resensi Buku Antar Kelas: Bangkitkan Semangat Literasi Generasi Muda',ringkas:'Memperingati Hari Pendidikan Nasional, perpustakaan menyelenggarakan lomba resensi buku yang diikuti seluruh kelas.',tanggal:'2 Mei 2025',isi:'<p>Dalam rangka memperingati Hari Pendidikan Nasional, perpustakaan SMAN 1 Kutowinangun menyelenggarakan Lomba Resensi Buku Antar Kelas yang diikuti oleh perwakilan dari seluruh kelas X, XI, dan XII.</p><p>Lomba ini bertujuan untuk menumbuhkan budaya membaca dan berpikir kritis di kalangan siswa. Peserta diwajibkan membaca satu buku pilihan dari koleksi perpustakaan, kemudian menulis resensi berupa ulasan isi, kelebihan, kekurangan, dan rekomendasi buku tersebut.</p>'},
+  {id:6,tag:'Literasi',thumb:'t1',icon:'fa-pen-nib',judul:'Menulis Buku Harian Tingkatkan Kemampuan Literasi dan Kesehatan Mental Remaja',ringkas:'Para ahli psikologi remaja merekomendasikan kebiasaan menulis buku harian sebagai cara efektif meningkatkan literasi sekaligus menjaga kesehatan mental.',tanggal:'8 Mei 2025',isi:'<p>Menulis buku harian bukan sekadar kegiatan mengisi waktu luang. Sejumlah penelitian terbaru menunjukkan bahwa kebiasaan menulis buku harian secara rutin memiliki manfaat ganda: meningkatkan kemampuan literasi tulisan sekaligus menjaga kesehatan mental remaja.</p><p>Dr. Sari Puspitasari dari Universitas Gadjah Mada menjelaskan bahwa remaja yang rutin menulis buku harian selama minimal 10 menit per hari menunjukkan perkembangan kosakata yang signifikan dalam tiga bulan pertama. Selain itu, mereka juga lebih mampu mengekspresikan perasaan dan mengelola stres.</p><p>"Menulis adalah cara tertua manusia mengolah pikiran. Buku harian adalah ruang aman yang sepenuhnya milik kamu," ujar Dr. Sari dalam seminar literasi nasional yang digelar pekan lalu.</p><p>Perpustakaan SMAN 1 Kutowinangun pun menyediakan buku-buku panduan menulis kreatif yang bisa dipinjam secara gratis oleh seluruh siswa.</p>'},
+  {id:7,tag:'Perpustakaan',thumb:'t2',icon:'fa-qrcode',judul:'Sistem Barcode Buku Perpustakaan Resmi Diaktifkan, Proses Pinjam Kini Lebih Cepat',ringkas:'Perpustakaan SMAN 1 Kutowinangun kini resmi menggunakan sistem barcode untuk mempercepat proses peminjaman dan pengembalian buku.',tanggal:'15 Apr 2025',isi:'<p>Mulai bulan April 2025, perpustakaan SMAN 1 Kutowinangun secara resmi mengaktifkan sistem barcode untuk setiap koleksi buku. Inovasi ini merupakan bagian dari program modernisasi perpustakaan sekolah yang diinisiasi oleh Tim IT dan didukung penuh oleh pihak sekolah.</p><p>Dengan sistem ini, petugas perpustakaan dapat memproses peminjaman dan pengembalian buku hanya dalam hitungan detik menggunakan scanner barcode. Data transaksi langsung tersinkronisasi dengan sistem digital SiPustaka, sehingga informasi stok buku selalu akurat dan terkini.</p><p>"Dulu proses pencatatan manual memakan waktu 3-5 menit per transaksi. Sekarang dengan barcode, cukup 10 detik," ungkap petugas perpustakaan, Ibu Retno Wulandari.</p>'},
+  {id:8,tag:'Komunitas',thumb:'t3',icon:'fa-users',judul:'Klub Buku Siswa SMAN 1 Kutowinangun Resmi Terbentuk',ringkas:'Sebanyak 24 siswa dari berbagai kelas bergabung dalam Klub Buku perdana SMAN 1 Kutowinangun yang akan rutin mengadakan diskusi literasi.',tanggal:'10 Mei 2025',isi:'<p>Semangat literasi di SMAN 1 Kutowinangun kian membara dengan terbentuknya Klub Buku perdana yang resmi dikukuhkan pada Jumat, 10 Mei 2025. Sebanyak 24 siswa dari kelas X hingga XII mendaftar sebagai anggota di batch pertama ini.</p><p>Klub Buku ini akan mengadakan pertemuan rutin setiap dua minggu sekali di perpustakaan sekolah. Dalam setiap pertemuan, anggota akan mendiskusikan satu buku yang telah disepakati bersama, berbagi pandangan, dan mempresentasikan resensi singkat.</p><p>Koordinator Klub Buku, Kevin Cahya Ardyanta dari kelas X.E5, menyebutkan bahwa agenda pertama adalah membaca novel "Laskar Pelangi" karya Andrea Hirata. "Kami ingin mulai dari karya Indonesia dulu, biar lebih dekat dengan budaya sendiri," ungkapnya.</p>'},
+  {id:9,tag:'Edukasi',thumb:'t4',icon:'fa-chalkboard',judul:'Kelas Literasi Media: Siswa Belajar Membedakan Berita Hoaks dan Fakta',ringkas:'Workshop literasi media digelar untuk membantu siswa mengenali ciri-ciri berita hoaks dan mengembangkan kemampuan berpikir kritis di era digital.',tanggal:'18 Apr 2025',isi:'<p>Di tengah banjir informasi di era digital, kemampuan memilah berita benar dari hoaks menjadi keterampilan yang sangat krusial. Perpustakaan SMAN 1 Kutowinangun bekerja sama dengan Kominfo Kabupaten Kebumen menggelar workshop "Literasi Media: Cerdas di Era Digital" yang diikuti oleh 60 siswa pilihan.</p><p>Workshop sehari penuh ini membahas cara mengenali ciri-ciri berita hoaks, teknik verifikasi fakta menggunakan berbagai platform daring, serta pentingnya berpikir kritis sebelum menyebarkan informasi di media sosial.</p><p>Peserta dilatih langsung menggunakan tools pengecekan fakta seperti Turnbackhoax.id dan CekFakta.com. Di akhir sesi, para siswa diminta menganalisis 10 berita yang beredar dan menentukan mana yang fakta dan mana yang hoaks.</p>'},
+  {id:10,tag:'Inspirasi',thumb:'t5',icon:'fa-lightbulb',judul:'Alumni SMAN 1 Kutowinangun Berbagi Kisah Sukses Berawal dari Cinta Buku',ringkas:'Tiga alumni sukses hadir berbagi pengalaman bagaimana kebiasaan membaca sejak SMA menjadi fondasi karier dan kehidupan mereka.',tanggal:'25 Apr 2025',isi:'<p>Tiga alumni SMAN 1 Kutowinangun yang kini sukses di bidangnya masing-masing hadir dalam sesi Talk Show Inspirasi yang digelar di perpustakaan sekolah pada Jumat, 25 April 2025. Ketiganya kompak berbagi satu benang merah: kebiasaan membaca yang ditanamkan sejak SMA.</p><p>Rizky Firmansyah, kini bekerja sebagai jurnalis di salah satu media nasional, mengaku perpustakaan SMAN 1 Kutowinangun adalah tempat favoritnya semasa sekolah. "Saya menghabiskan setidaknya satu jam per hari di perpustakaan. Dari sana saya jatuh cinta dengan dunia tulis-menulis," kenangnya.</p><p>Sementara itu, Dina Aulia yang berprofesi sebagai dokter mengungkapkan bahwa buku-buku sains dan biologi populer di perpustakaan sekolah menjadi penyulut minatnya pada dunia kedokteran. "Kalau bukan karena perpustakaan, mungkin saya tidak akan memilih jalan ini," tuturnya dengan haru.</p>'},
+  {id:11,tag:'Program',thumb:'t1',icon:'fa-seedling',judul:'Pojok Baca Outdoor Hadir di Taman Sekolah, Mengajak Siswa Membaca di Alam Terbuka',ringkas:'SMAN 1 Kutowinangun meresmikan pojok baca outdoor di taman sekolah sebagai upaya menciptakan suasana membaca yang menyenangkan dan berbeda.',tanggal:'1 Mei 2025',isi:'<p>Sebuah inovasi menarik hadir di SMAN 1 Kutowinangun: pojok baca outdoor yang berlokasi di taman sekolah kini resmi dibuka untuk seluruh warga sekolah. Area ini dilengkapi dengan rak buku tahan cuaca, bangku beton berlapis kayu, dan peneduh alami dari pohon-pohon yang rindang.</p><p>Koleksi di pojok baca outdoor ini terdiri dari 150 buku pilihan yang dirotasi setiap bulan dari koleksi perpustakaan utama. Siswa bisa membaca di sini saat jam istirahat, jam kosong, atau bahkan saat jam pelajaran berlangsung jika mendapat izin dari guru.</p><p>"Kami ingin membaca tidak terasa seperti kewajiban, tapi seperti piknik. Dengan suasana alam terbuka, kami berharap siswa lebih rileks dan menikmati prosesnya," ujar Waka Kesiswaan, Bapak Andi Wijaya.</p>'},
+  {id:12,tag:'Literasi',thumb:'t2',icon:'fa-globe',judul:'Indonesia Naik Peringkat dalam Indeks Literasi Global 2025',ringkas:'Laporan terbaru menempatkan Indonesia di posisi yang lebih baik dalam indeks literasi global, didorong program membaca nasional dan digitalisasi perpustakaan.',tanggal:'7 Mei 2025',isi:'<p>Kabar baik datang dari dunia literasi internasional. Laporan Indeks Literasi Global 2025 yang dirilis oleh UNESCO menempatkan Indonesia pada posisi yang lebih baik dibandingkan tahun sebelumnya, naik 12 peringkat ke posisi 61 dari 77 negara yang disurvei.</p><p>Peningkatan ini disebut tidak lepas dari berbagai program literasi nasional yang digenjot pemerintah, termasuk Program Indonesia Membaca, distribusi buku ke daerah 3T, serta digitalisasi ribuan perpustakaan sekolah di seluruh nusantara.</p><p>Kepala Badan Pengembangan dan Pembinaan Bahasa (Badan Bahasa) menyebut pencapaian ini sebagai titik awal yang baik, namun masih banyak pekerjaan rumah yang harus diselesaikan. "Target kami di 2030 adalah masuk 50 besar. Dengan momentum ini, kami optimis bisa tercapai," ungkapnya.</p>'},
+  {id:13,tag:'Tips',thumb:'t3',icon:'fa-bookmark',judul:'5 Teknik Membaca Cepat yang Bisa Kamu Pelajari Sendiri',ringkas:'Kemampuan membaca cepat bisa dipelajari oleh siapa saja. Simak 5 teknik yang terbukti efektif dan bisa langsung kamu praktikkan.',tanggal:'3 Mei 2025',isi:'<p>Membaca cepat bukan berarti membaca sembarangan. Dengan teknik yang tepat, kamu bisa menyerap informasi lebih banyak dalam waktu lebih singkat. Berikut 5 teknik membaca cepat yang bisa kamu pelajari sendiri:</p><p><strong>1. Skimming</strong> — Baca judul, subjudul, dan kalimat pertama setiap paragraf untuk mendapat gambaran umum. Cocok untuk menilai apakah sebuah buku layak dibaca lebih dalam.</p><p><strong>2. Scanning</strong> — Gerakkan mata secara vertikal di tengah halaman untuk mencari kata kunci atau informasi spesifik. Berguna saat mencari data atau fakta tertentu.</p><p><strong>3. Chunking</strong> — Latih mata membaca kelompok kata sekaligus (3-4 kata per fiksasi), bukan kata per kata. Ini adalah inti dari teknik membaca cepat.</p><p><strong>4. Minimalisasi subvokalisasi</strong> — Kurangi kebiasaan "membaca dalam hati" yang memperlambat kecepatan baca hingga kecepatan bicara.</p><p><strong>5. Pointer method</strong> — Gunakan jari atau pensil sebagai pemandu gerakan mata agar lebih fokus dan tidak mudah terdistraksi.</p>'},
+  {id:14,tag:'Kegiatan',thumb:'t4',icon:'fa-calendar-check',judul:'Bulan Mei Ditetapkan sebagai Bulan Literasi SMAN 1 Kutowinangun',ringkas:'Berbagai kegiatan literasi menarik akan digelar sepanjang Mei 2025, mulai dari pameran buku, talkshow, hingga festival resensi antarkelas.',tanggal:'1 Mei 2025',isi:'<p>Menyambut Hari Pendidikan Nasional dan Hari Kebangkitan Nasional, SMAN 1 Kutowinangun resmi menetapkan Mei 2025 sebagai Bulan Literasi Sekolah. Berbagai kegiatan seru dan edukatif akan digelar sepanjang bulan ini untuk merayakan cinta membaca.</p><p>Rangkaian acara Bulan Literasi meliputi: Pameran Buku dan Karya Siswa (1-3 Mei), Workshop Menulis Kreatif bersama penulis tamu (10 Mei), Talkshow Alumni Inspiratif (25 Mei), Lomba Resensi Buku Antarkelas (seluruh Mei), serta Festival Literasi dengan pertunjukan pembacaan puisi dan cerpen pada 31 Mei.</p><p>Seluruh siswa diajak untuk berpartisipasi aktif dalam setiap kegiatan. Peserta terbaik di setiap kategori lomba akan mendapat penghargaan langsung dari Kepala Sekolah dan berkesempatan mewakili sekolah di tingkat kabupaten.</p>'},
+  {id:15,tag:'Inspirasi',thumb:'t5',icon:'fa-heart',judul:'Perpustakaan Bukan Hanya Tempat Buku — Ini Tempat Mimpi Bertumbuh',ringkas:'Sebuah refleksi tentang peran perpustakaan sekolah sebagai ruang tumbuh bagi imajinasi, kreativitas, dan cita-cita generasi muda.',tanggal:'9 Mei 2025',isi:'<p>Ada yang istimewa dari perpustakaan sekolah. Ia bukan sekadar gudang buku. Di antara rak-rak berdebu dan halaman-halaman usang, tersimpan ribuan mimpi yang pernah bersemi — mimpi anak-anak muda yang duduk diam, membaca, dan diam-diam membayangkan masa depan mereka.</p><p>Di SMAN 1 Kutowinangun, perpustakaan adalah tempat di mana seorang siswa yang bingung tentang jurusan kuliah menemukan jawaban dari sebuah biografi. Di mana seorang remaja introvert menemukan teman terbaik dalam tokoh-tokoh fiksi. Di mana guru-guru menemukan inspirasi untuk mengajar dengan cara yang berbeda.</p><p>Perpustakaan yang baik tidak hanya menyediakan buku — ia menyediakan ruang aman untuk bertanya, melamun, berimajinasi, dan tumbuh. Itulah mengapa program literasi di sekolah ini bukan sekadar kewajiban kurikulum, melainkan investasi jangka panjang untuk generasi yang lebih kritis, kreatif, dan berempati.</p><p>Jadi, kapan terakhir kali kamu menghabiskan waktu di perpustakaan?</p>'}
+];
+
+/* ═════════════════════════════════════
+   APP STATE
+═════════════════════════════════════ */
+var currentUser   = null;
+var selectedBuku  = null;
+var foundRecord   = null;
+var peminjamanList= [];
+var prevPage      = 'page-dashboard';
+
+/* ═════════════════════════════════════
+   HELPERS
+═════════════════════════════════════ */
+var BULAN=['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+function fmt(d){if(!d)return'—';var dt=d instanceof Date?d:new Date(d);return dt.getDate()+' '+BULAN[dt.getMonth()]+' '+dt.getFullYear();}
+function tambah7(d){var r=new Date(d);r.setDate(r.getDate()+7);return r;}
+function selisih(a,b){return Math.floor((new Date(b)-new Date(a))/864e5);}
+function rp(n){return'Rp '+Number(n).toLocaleString('id-ID');}
+function genId(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
+
+function toast(msg,type){
+  type=type||'success';
+  var ic={success:'fa-check-circle',error:'fa-times-circle',info:'fa-info-circle'};
+  var el=document.createElement('div');
+  el.className='toast-item '+type;
+  el.innerHTML='<i class="fas '+(ic[type]||'fa-info-circle')+'"></i> '+msg;
+  document.getElementById('toast-wrap').appendChild(el);
+  setTimeout(function(){el.classList.add('out');setTimeout(function(){el.remove();},350);},3500);
+}
+
+function goTo(id,cb){
+  document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active');});
+  document.getElementById(id).classList.add('active');
+  var b=document.querySelector('#'+id+' .page-body');
+  if(b)b.scrollTop=0;
+  tutupDD();
+  if(typeof cb==='function')cb();
+}
+
+/* ═════════════════════════════════════
+   SESSION (localStorage)
+═════════════════════════════════════ */
+function saveSession(siswa){
+  try{ localStorage.setItem('sipustaka_user', JSON.stringify(siswa)); }catch(e){}
+}
+function loadSession(){
+  try{
+    var raw=localStorage.getItem('sipustaka_user');
+    if(raw){ var s=JSON.parse(raw); if(s&&s.nis&&s.nama)return s; }
+  }catch(e){}
+  return null;
+}
+function clearSession(){ try{localStorage.removeItem('sipustaka_user');}catch(e){} }
+
+/* Simpan & muat data peminjaman (persisten seperti session) */
+function savePeminjaman(){
+  try{
+    /* Simpan tanggal sebagai string ISO supaya JSON.parse bisa baca balik */
+    var data=peminjamanList.map(function(p){
+      return {id:p.id,nis:p.nis,kode:p.kode,judul:p.judul,
+              tglPinjam:p.tglPinjam instanceof Date?p.tglPinjam.toISOString():p.tglPinjam,
+              tglKembali:p.tglKembali instanceof Date?p.tglKembali.toISOString():p.tglKembali,
+              selesai:p.selesai};
+    });
+    localStorage.setItem('sipustaka_peminjaman',JSON.stringify(data));
+  }catch(e){}
+}
+function loadPeminjaman(){
+  try{
+    var raw=localStorage.getItem('sipustaka_peminjaman');
+    if(raw){
+      var arr=JSON.parse(raw);
+      /* Konversi string ISO kembali ke Date & rekonstruksi stok buku */
+      arr.forEach(function(p){
+        p.tglPinjam=new Date(p.tglPinjam);
+        p.tglKembali=new Date(p.tglKembali);
+      });
+      return arr;
+    }
+  }catch(e){}
+  return [];
+}
+function clearPeminjaman(){ try{localStorage.removeItem('sipustaka_peminjaman');}catch(e){} }
+
+/* Sinkronisasi stok BUKU[] berdasarkan peminjaman aktif yg tersimpan */
+function syncStokDariPeminjaman(){
+  /* Reset stok ke nilai default */
+  var DEFAULT_STOK={BK001:3,BK002:2,BK003:4,BK004:2,BK005:0,BK006:1,BK007:3,BK008:2};
+  BUKU.forEach(function(b){ b.stok=DEFAULT_STOK[b.kode]!==undefined?DEFAULT_STOK[b.kode]:b.stok; });
+  /* Kurangi stok untuk setiap peminjaman yang masih aktif */
+  peminjamanList.forEach(function(p){
+    if(!p.selesai){
+      for(var i=0;i<BUKU.length;i++){
+        if(BUKU[i].kode===p.kode){ BUKU[i].stok=Math.max(0,BUKU[i].stok-1); break; }
+      }
+    }
+  });
+}
+
+/* ═════════════════════════════════════
+   HAMBURGER / DROPDOWN
+═════════════════════════════════════ */
+function tutupDD(){ document.querySelectorAll('.nav-dropdown').forEach(function(d){d.classList.remove('open');}); }
+document.addEventListener('click',tutupDD);
+
+function setupHam(hamId,ddId){
+  var btn=document.getElementById(hamId);
+  if(!btn)return;
+  btn.addEventListener('click',function(e){
+    e.stopPropagation();
+    var dd=document.getElementById(ddId);
+    var open=dd.classList.contains('open');
+    tutupDD();
+    if(!open)dd.classList.add('open');
+  });
+}
+setupHam('ham-beranda','dd-beranda');
+setupHam('ham-dash','dd-dash');
+setupHam('ham-pinjam','dd-pinjam');
+setupHam('ham-kembali','dd-kembali');
+setupHam('ham-profil','dd-profil');
+setupHam('ham-berita','dd-berita');
+
+function handleDD(action){
+  tutupDD();
+  if(action==='login')      { bukaLogin(); }
+  else if(action==='daftar'){ bukaDaftar(); }
+  else if(action==='berita-pub') { bukaBerita(false); }
+  else if(action==='beranda-user'){ goTo('page-dashboard',renderAktif); }
+  else if(action==='berita-user') { bukaBerita(true); }
+  else if(action==='profil') { bukaProfil(); }
+  else if(action==='logout') { doLogout(); }
+}
+
+document.querySelectorAll('.dd-item[data-dd]').forEach(function(item){
+  item.addEventListener('click',function(e){e.stopPropagation();handleDD(item.getAttribute('data-dd'));});
+});
+
+/* ═════════════════════════════════════
+   BERITA HALAMAN
+═════════════════════════════════════ */
+function buildBeritaCard(b){
+  return '<div class="berita-card" data-bid="'+b.id+'">'
+    +'<div class="berita-thumb '+b.thumb+'"><i class="fas '+b.icon+'"></i></div>'
+    +'<div class="berita-body">'
+    +'<div class="berita-tag">'+b.tag+'</div>'
+    +'<div class="berita-judul">'+b.judul+'</div>'
+    +'<div class="berita-ringkas">'+b.ringkas+'</div>'
+    +'<div class="berita-date"><i class="fas fa-calendar-alt" style="margin-right:.28rem"></i>'+b.tanggal+'</div>'
+    +'</div></div>';
+}
+
+function attachBeritaClick(container){
+  container.querySelectorAll('.berita-card').forEach(function(c){
+    c.addEventListener('click',function(){bukaDetailBerita(parseInt(c.getAttribute('data-bid')));});
+  });
+}
+
+function renderBerandaBerita(){
+  var g=document.getElementById('beranda-berita-grid');
+  g.innerHTML=BERITA.slice(0,3).map(buildBeritaCard).join('');
+  attachBeritaClick(g);
+}
+
+function bukaBerita(isLoggedIn){
+  /* isi navbar berita sesuai status login */
+  var nc=document.getElementById('berita-nav-center');
+  var nr=document.getElementById('berita-nav-right');
+  var dd=document.getElementById('dd-berita');
+  if(isLoggedIn){
+    nc.innerHTML='<button class="nav-link" id="bnav-beranda"><i class="fas fa-home"></i> Beranda</button>'
+      +'<button class="nav-link active-link"><i class="fas fa-newspaper"></i> Berita</button>';
+    nr.innerHTML='<div class="nav-avatar-btn" id="bnav-profil" title="Profil"><i class="fas fa-user"></i></div>'
+      +'<button class="btn-nav-logout" id="bnav-logout"><i class="fas fa-sign-out-alt"></i> Keluar</button>';
+    dd.innerHTML='<div class="dd-item" data-dd="beranda-user"><i class="fas fa-home"></i> Beranda</div>'
+      +'<div class="dd-item" data-dd="berita-user"><i class="fas fa-newspaper"></i> Berita</div>'
+      +'<div class="dd-item" data-dd="profil"><i class="fas fa-user-circle"></i> Profil</div>'
+      +'<div class="dd-item danger" data-dd="logout"><i class="fas fa-sign-out-alt"></i> Keluar</div>';
+    var bb=document.getElementById('bnav-beranda');
+    if(bb)bb.addEventListener('click',function(){goTo('page-dashboard',renderAktif);});
+    var bp=document.getElementById('bnav-profil');
+    if(bp)bp.addEventListener('click',bukaProfil);
+    var bl=document.getElementById('bnav-logout');
+    if(bl)bl.addEventListener('click',doLogout);
+    dd.querySelectorAll('.dd-item[data-dd]').forEach(function(i){
+      i.addEventListener('click',function(e){e.stopPropagation();handleDD(i.getAttribute('data-dd'));});
+    });
+    prevPage='page-dashboard';
+  }else{
+    nc.innerHTML='<button class="nav-link active-link"><i class="fas fa-newspaper"></i> Berita</button>';
+    nr.innerHTML='<button class="nav-link" id="bnav-login" style="background:rgba(201,150,44,.18);color:var(--gold-lt)"><i class="fas fa-sign-in-alt"></i> Masuk</button>'
+      +'<button class="nav-link" id="bnav-daftar" style="background:linear-gradient(135deg,var(--gold),var(--rust));color:#fff;padding:.42rem 1rem"><i class="fas fa-user-plus"></i> Daftar</button>';
+    dd.innerHTML='<div class="dd-item" data-dd="login"><i class="fas fa-sign-in-alt"></i> Masuk</div>'
+      +'<div class="dd-item" data-dd="daftar"><i class="fas fa-user-plus"></i> Daftar</div>';
+    var bl2=document.getElementById('bnav-login'); if(bl2)bl2.addEventListener('click',bukaLogin);
+    var bd2=document.getElementById('bnav-daftar'); if(bd2)bd2.addEventListener('click',bukaDaftar);
+    dd.querySelectorAll('.dd-item[data-dd]').forEach(function(i){
+      i.addEventListener('click',function(e){e.stopPropagation();handleDD(i.getAttribute('data-dd'));});
+    });
+    prevPage='page-beranda';
+  }
+  var g=document.getElementById('berita-full-grid');
+  g.innerHTML=BERITA.map(buildBeritaCard).join('');
+  attachBeritaClick(g);
+  goTo('page-berita');
+}
+
+function bukaDetailBerita(id){
+  var b=null;
+  for(var i=0;i<BERITA.length;i++){if(BERITA[i].id===id){b=BERITA[i];break;}}
+  if(!b)return;
+  document.getElementById('bd-tag').textContent=b.tag;
+  document.getElementById('bd-judul').textContent=b.judul;
+  document.getElementById('bd-meta').innerHTML='<i class="fas fa-calendar-alt" style="margin-right:.3rem"></i>'+b.tanggal;
+  document.getElementById('bd-body').innerHTML=b.isi;
+  document.getElementById('berita-overlay').classList.add('show');
+}
+
+/* ═════════════════════════════════════
+   PROFIL
+═════════════════════════════════════ */
+function bukaProfil(){
+  var pages=['page-dashboard','page-pinjam','page-kembali','page-berita'];
+  for(var i=0;i<pages.length;i++){if(document.getElementById(pages[i]).classList.contains('active')){prevPage=pages[i];break;}}
+  goTo('page-profil');
+}
+
+/* ═════════════════════════════════════
+   LOGIN MODAL
+═════════════════════════════════════ */
+function bukaLogin(){
+  tutupDD();
+  document.getElementById('inp-nis').value='';
+  document.getElementById('login-err').style.display='none';
+  document.getElementById('modal-daftar').classList.remove('show');
+  document.getElementById('modal-login').classList.add('show');
+}
+function tutupLogin(){ document.getElementById('modal-login').classList.remove('show'); }
+
+function setUser(siswa){
+  currentUser=siswa;
+  saveSession(siswa);
+  document.getElementById('dash-nama').textContent=siswa.nama.split(' ')[0];
+  document.getElementById('profil-nama').textContent=siswa.nama;
+  document.getElementById('profil-nis-badge').textContent='NIS '+siswa.nis;
+  document.getElementById('profil-nis-val').textContent=siswa.nis;
+}
+
+function doLogin(){
+  var nis=document.getElementById('inp-nis').value.trim();
+  var err=document.getElementById('login-err');
+  err.style.display='none';
+  if(!nis){err.textContent='NIS tidak boleh kosong.';err.style.display='block';return;}
+  var siswa=null;
+  for(var i=0;i<SISWA.length;i++){if(SISWA[i].nis===nis){siswa=SISWA[i];break;}}
+  if(!siswa){err.textContent='NIS tidak ditemukan.';err.style.display='block';return;}
+  setUser(siswa);
+  tutupLogin();
+  goTo('page-dashboard',renderAktif);
+  toast('Selamat datang, '+siswa.nama.split(' ')[0]+'! 👋','success');
+}
+
+/* ═════════════════════════════════════
+   DAFTAR MODAL
+═════════════════════════════════════ */
+function bukaDaftar(){
+  tutupDD();
+  document.getElementById('inp-nis-daftar').value='';
+  document.getElementById('daftar-err').style.display='none';
+  document.getElementById('daftar-ok').style.display='none';
+  document.getElementById('modal-login').classList.remove('show');
+  document.getElementById('modal-daftar').classList.add('show');
+}
+function tutupDaftar(){ document.getElementById('modal-daftar').classList.remove('show'); }
+
+function doDaftar(){
+  var nis=document.getElementById('inp-nis-daftar').value.trim();
+  var err=document.getElementById('daftar-err');
+  var ok=document.getElementById('daftar-ok');
+  err.style.display='none'; ok.style.display='none';
+  if(!nis){err.textContent='NIS tidak boleh kosong.';err.style.display='block';return;}
+  var siswa=null;
+  for(var i=0;i<SISWA.length;i++){if(SISWA[i].nis===nis){siswa=SISWA[i];break;}}
+  if(!siswa){err.textContent='NIS tidak ditemukan dalam data sekolah. Hubungi petugas perpustakaan.';err.style.display='block';return;}
+  ok.textContent='Berhasil! Kamu akan langsung masuk sebagai '+siswa.nama.split(' ')[0]+'.';
+  ok.style.display='block';
+  setTimeout(function(){
+    setUser(siswa);
+    tutupDaftar();
+    goTo('page-dashboard',renderAktif);
+    toast('Pendaftaran berhasil! Selamat datang, '+siswa.nama.split(' ')[0]+'! 🎉','success');
+  },900);
+}
+
+/* ═════════════════════════════════════
+   LOGOUT
+═════════════════════════════════════ */
+function doLogout(){
+  currentUser=null; selectedBuku=null; foundRecord=null;
+  clearSession();
+  clearPeminjaman();
+  goTo('page-beranda');
+  toast('Kamu berhasil keluar.','info');
+}
+
+/* ═════════════════════════════════════
+   DASHBOARD
+═════════════════════════════════════ */
+/* ═════════════════════════════════════
+   DASHBOARD — berita strip & jam
+═════════════════════════════════════ */
+function updateDashTime(){
+  var el=document.getElementById('dash-time');
+  if(!el)return;
+  var now=new Date();
+  var hari=['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
+  var bl=['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+  el.textContent=hari[now.getDay()]+', '+now.getDate()+' '+bl[now.getMonth()]+' '+now.getFullYear();
+}
+
+function renderDashBerita(){
+  var g=document.getElementById('dash-berita-grid');
+  if(!g)return;
+  /* Tampilkan 6 berita terbaru */
+  var html='';
+  BERITA.slice(0,6).forEach(function(b){
+    html+='<div class="dash-berita-card" data-bid="'+b.id+'">'
+      +'<div class="berita-thumb '+b.thumb+' dash-berita-thumb"><i class="fas '+b.icon+'"></i></div>'
+      +'<div class="dash-berita-content">'
+      +'<div class="dash-berita-tag">'+b.tag+'</div>'
+      +'<div class="dash-berita-judul">'+b.judul+'</div>'
+      +'<div class="dash-berita-date"><i class="fas fa-calendar-alt" style="margin-right:.25rem"></i>'+b.tanggal+'</div>'
+      +'</div></div>';
+  });
+  g.innerHTML=html;
+  g.querySelectorAll('.dash-berita-card').forEach(function(c){
+    c.addEventListener('click',function(){bukaDetailBerita(parseInt(c.getAttribute('data-bid')));});
+  });
+}
+
+function renderAktif(){
+  updateDashTime();
+  renderDashBerita();
+  var list=peminjamanList.filter(function(p){return p.nis===currentUser.nis&&!p.selesai;});
+  /* update angka pinjaman aktif di hero */
+  var statEl=document.getElementById('dash-stat-aktif');
+  if(statEl)statEl.textContent=list.length;
+  var wrap=document.getElementById('aktif-wrap');
+  var list=peminjamanList.filter(function(p){return p.nis===currentUser.nis&&!p.selesai;});
+  if(!list.length){wrap.innerHTML='<div class="empty-state"><i class="fas fa-box-open"></i><p>Kamu belum memiliki peminjaman aktif.</p></div>';return;}
+  var html='<div style="overflow-x:auto"><table class="book-table"><thead><tr><th>Kode</th><th>Judul</th><th>Tgl Pinjam</th><th>Batas Kembali</th><th>Status</th></tr></thead><tbody>';
+  list.forEach(function(p){
+    var telat=Math.max(0,selisih(p.tglKembali,new Date()));
+    var badge=telat>0?'<span class="stock-badge late">Terlambat '+telat+' hari</span>':'<span class="stock-badge ok">Tepat waktu</span>';
+    html+='<tr><td><code>'+p.kode+'</code></td><td>'+p.judul+'</td><td>'+fmt(p.tglPinjam)+'</td><td>'+fmt(p.tglKembali)+'</td><td>'+badge+'</td></tr>';
+  });
+  html+='</tbody></table></div>';
+  wrap.innerHTML=html;
+}
+
+/* ═════════════════════════════════════
+   PINJAM
+═════════════════════════════════════ */
+function bukaPinjam(){goTo('page-pinjam',renderTabelBuku);}
+function renderTabelBuku(){
+  var html='';
+  BUKU.forEach(function(b){
+    var badge=b.stok>0?'<span class="stock-badge ok">'+b.stok+' tersedia</span>':'<span class="stock-badge empty">Habis</span>';
+    var btn=b.stok>0?'<button class="btn-pinjam" data-kode="'+b.kode+'"><i class="fas fa-plus" style="margin-right:.28rem"></i>Pinjam</button>':'<button class="btn-pinjam" disabled>Tidak tersedia</button>';
+    html+='<tr><td><code>'+b.kode+'</code></td><td>'+b.judul+'</td><td>'+badge+'</td><td>'+btn+'</td></tr>';
+  });
+  document.getElementById('tbody-buku').innerHTML=html;
+  document.querySelectorAll('#tbody-buku .btn-pinjam:not([disabled])').forEach(function(btn){
+    btn.addEventListener('click',function(){bukaPinjamModal(btn.getAttribute('data-kode'));});
+  });
+}
+
+function bukaPinjamModal(kode){
+  var buku=null;for(var i=0;i<BUKU.length;i++){if(BUKU[i].kode===kode){buku=BUKU[i];break;}}
+  if(!buku||buku.stok<=0){toast('Stok habis!','error');return;}
+  selectedBuku=buku;
+  var tglP=new Date(),tglK=tambah7(tglP);
+  document.getElementById('m-judul').textContent=buku.judul;
+  document.getElementById('m-kode').textContent='Kode: '+buku.kode;
+  document.getElementById('m-tanggal').textContent='Pinjam: '+fmt(tglP)+' → Batas: '+fmt(tglK);
+  document.getElementById('modal-confirm').classList.add('show');
+}
+function tutupModal(){document.getElementById('modal-confirm').classList.remove('show');selectedBuku=null;}
+function konfirmasiPinjam(){
+  if(!selectedBuku)return;
+  var buku=null;for(var i=0;i<BUKU.length;i++){if(BUKU[i].kode===selectedBuku.kode){buku=BUKU[i];break;}}
+  if(!buku||buku.stok<=0){toast('Stok habis!','error');tutupModal();return;}
+  for(var j=0;j<peminjamanList.length;j++){if(peminjamanList[j].nis===currentUser.nis&&peminjamanList[j].kode===buku.kode&&!peminjamanList[j].selesai){toast('Sudah dipinjam!','error');tutupModal();return;}}
+  var tglP=new Date(),tglK=tambah7(tglP);
+  var rec={id:genId(),nis:currentUser.nis,kode:buku.kode,judul:buku.judul,tglPinjam:tglP,tglKembali:tglK,selesai:false};
+  peminjamanList.push(rec); buku.stok--;
+  savePeminjaman();
+  if(db){db.collection('peminjaman').add({nis:rec.nis,namaSiswa:currentUser.nama,kodeBuku:rec.kode,judulBuku:rec.judul,tglPinjam:firebase.firestore.Timestamp.fromDate(tglP),tglKembali:firebase.firestore.Timestamp.fromDate(tglK),status:'aktif'}).catch(function(e){console.warn(e.message);});}
+  tutupModal();renderTabelBuku();renderAktif();
+  toast('Berhasil meminjam "'+buku.judul+'"! Kembalikan sebelum '+fmt(tglK)+'.','success');
+}
+
+/* ═════════════════════════════════════
+   KEMBALI
+═════════════════════════════════════ */
+function bukaKembali(){goTo('page-kembali',resetFormKembali);}
+function resetFormKembali(){document.getElementById('inp-kode').value='';document.getElementById('result-card').className='result-card';foundRecord=null;}
+function cariPeminjaman(){
+  var kode=document.getElementById('inp-kode').value.trim().toUpperCase();
+  if(!kode){toast('Kode buku tidak boleh kosong!','error');return;}
+  var rec=null;for(var i=0;i<peminjamanList.length;i++){if(peminjamanList[i].kode===kode&&peminjamanList[i].nis===currentUser.nis&&!peminjamanList[i].selesai){rec=peminjamanList[i];break;}}
+  if(!rec){toast('Tidak ada peminjaman aktif untuk kode "'+kode+'" atas nama kamu.','error');document.getElementById('result-card').className='result-card';return;}
+  var aktual=new Date(),telat=Math.max(0,selisih(rec.tglKembali,aktual)),denda=telat*1000;
+  document.getElementById('r-nama').textContent=currentUser.nama;
+  document.getElementById('r-nis').textContent=currentUser.nis;
+  document.getElementById('r-judul').textContent=rec.judul;
+  document.getElementById('r-tgl-pinjam').textContent=fmt(rec.tglPinjam);
+  document.getElementById('r-tgl-batas').textContent=fmt(rec.tglKembali);
+  var card=document.getElementById('result-card');
+  if(telat>0){
+    document.getElementById('r-terlambat').textContent=telat+' hari';
+    document.getElementById('r-terlambat').style.color='var(--red)';
+    document.getElementById('r-denda').innerHTML='<span class="fine-amount">'+rp(denda)+'</span>';
+    card.className='result-card show fine';
+  }else{
+    document.getElementById('r-terlambat').textContent='Tidak terlambat';
+    document.getElementById('r-terlambat').style.color='var(--green)';
+    document.getElementById('r-denda').innerHTML='<span class="no-fine">Gratis (Rp 0)</span>';
+    card.className='result-card show good';
+  }
+  foundRecord={id:rec.id,kode:rec.kode,judul:rec.judul,denda:denda};
+}
+function konfirmasiKembali(){
+  if(!foundRecord)return;
+  for(var i=0;i<peminjamanList.length;i++){if(peminjamanList[i].id===foundRecord.id){peminjamanList[i].selesai=true;break;}}
+  for(var j=0;j<BUKU.length;j++){if(BUKU[j].kode===foundRecord.kode){BUKU[j].stok++;break;}}
+  savePeminjaman();
+  if(db){db.collection('pengembalian').add({nis:currentUser.nis,namaSiswa:currentUser.nama,kodeBuku:foundRecord.kode,judulBuku:foundRecord.judul,denda:foundRecord.denda,tanggal:firebase.firestore.FieldValue.serverTimestamp()}).catch(function(e){console.warn(e.message);});}
+  toast('Buku "'+foundRecord.judul+'" berhasil dikembalikan!','success');
+  resetFormKembali();
+}
+
+/* ═════════════════════════════════════
+   EVENT LISTENERS
+═════════════════════════════════════ */
+/* Login modal */
+document.getElementById('btn-masuk').addEventListener('click',doLogin);
+document.getElementById('inp-nis').addEventListener('keydown',function(e){if(e.key==='Enter')doLogin();});
+document.getElementById('close-login').addEventListener('click',tutupLogin);
+document.getElementById('to-daftar').addEventListener('click',bukaDaftar);
+
+/* Daftar modal */
+document.getElementById('btn-daftar').addEventListener('click',doDaftar);
+document.getElementById('inp-nis-daftar').addEventListener('keydown',function(e){if(e.key==='Enter')doDaftar();});
+document.getElementById('close-daftar').addEventListener('click',tutupDaftar);
+document.getElementById('to-login').addEventListener('click',bukaLogin);
+
+/* Beranda hero */
+document.getElementById('hero-mulai').addEventListener('click',bukaLogin);
+document.getElementById('hero-berita').addEventListener('click',function(){bukaBerita(false);});
+document.getElementById('semua-berita').addEventListener('click',function(){bukaBerita(false);});
+
+/* Beranda desktop nav */
+document.getElementById('dnb-berita').addEventListener('click',function(){bukaBerita(false);});
+document.getElementById('dnb-login').addEventListener('click',bukaLogin);
+document.getElementById('dnb-daftar').addEventListener('click',bukaDaftar);
+
+/* Dashboard nav */
+document.getElementById('menu-pinjam').addEventListener('click',bukaPinjam);
+document.getElementById('menu-kembali').addEventListener('click',bukaKembali);
+document.getElementById('dnav-beranda').addEventListener('click',function(){goTo('page-dashboard',renderAktif);});
+document.getElementById('dnav-berita').addEventListener('click',function(){bukaBerita(true);});
+document.getElementById('dnav-profil').addEventListener('click',bukaProfil);
+document.getElementById('dnav-logout').addEventListener('click',doLogout);
+
+/* Pinjam nav */
+document.getElementById('pnav-beranda').addEventListener('click',function(){goTo('page-dashboard',renderAktif);});
+document.getElementById('pnav-berita').addEventListener('click',function(){bukaBerita(true);});
+document.getElementById('pnav-profil').addEventListener('click',bukaProfil);
+document.getElementById('pnav-logout').addEventListener('click',doLogout);
+document.getElementById('btn-back-pinjam').addEventListener('click',function(){goTo('page-dashboard',renderAktif);});
+
+/* Kembali nav */
+document.getElementById('knav-beranda').addEventListener('click',function(){goTo('page-dashboard',renderAktif);});
+document.getElementById('knav-berita').addEventListener('click',function(){bukaBerita(true);});
+document.getElementById('knav-profil').addEventListener('click',bukaProfil);
+document.getElementById('knav-logout').addEventListener('click',doLogout);
+document.getElementById('btn-back-kembali').addEventListener('click',function(){goTo('page-dashboard',renderAktif);});
+
+/* Profil nav */
+document.getElementById('pronav-beranda').addEventListener('click',function(){goTo('page-dashboard',renderAktif);});
+document.getElementById('pronav-berita').addEventListener('click',function(){bukaBerita(true);});
+document.getElementById('pronav-logout').addEventListener('click',doLogout);
+document.getElementById('btn-back-profil').addEventListener('click',function(){goTo(prevPage,prevPage==='page-dashboard'?renderAktif:null);});
+
+/* Berita back */
+document.getElementById('btn-back-berita').addEventListener('click',function(){goTo(prevPage,prevPage==='page-dashboard'?renderAktif:null);});
+
+/* Pinjam modal */
+document.getElementById('btn-batal').addEventListener('click',tutupModal);
+document.getElementById('btn-ya-pinjam').addEventListener('click',konfirmasiPinjam);
+
+/* Kembali buku */
+document.getElementById('btn-cari').addEventListener('click',cariPeminjaman);
+document.getElementById('inp-kode').addEventListener('keydown',function(e){if(e.key==='Enter')cariPeminjaman();});
+document.getElementById('btn-konfirmasi-kembali').addEventListener('click',konfirmasiKembali);
+
+/* Berita detail */
+document.getElementById('btn-tutup-berita').addEventListener('click',function(){document.getElementById('berita-overlay').classList.remove('show');});
+document.getElementById('berita-overlay').addEventListener('click',function(e){if(e.target===document.getElementById('berita-overlay'))document.getElementById('berita-overlay').classList.remove('show');});
+
+/* Tombol baru dashboard */
+document.getElementById('dash-semua-berita').addEventListener('click',function(){bukaBerita(true);});
+
+/* Footer syarat & ketentuan (semua halaman) */
+var SYARAT_MSG = 'Syarat & Ketentuan: Gunakan layanan ini dengan bijak. Data peminjaman bersifat personal dan tidak dibagikan kepada pihak lain. Denda keterlambatan Rp1.000/hari. Batas peminjaman 7 hari per buku.';
+var SYARAT_IDS = ['footer-syarat-beranda','footer-syarat-dash','fp-syarat-pinjam','fp-syarat-kembali','fp-syarat-profil','fp-syarat-berita'];
+SYARAT_IDS.forEach(function(id){
+  var el=document.getElementById(id);
+  if(el)el.addEventListener('click',function(e){e.preventDefault();toast(SYARAT_MSG,'info');});
+});
+
+/* ═════════════════════════════════════
+   INIT — cek localStorage, render beranda
+═════════════════════════════════════ */
+(function init(){
+  /* Update jumlah berita di stats strip beranda */
+  var statBerita=document.querySelector('.stats-strip .stat-item:nth-child(3) .stat-num');
+  if(statBerita)statBerita.textContent=BERITA.length;
+
+  renderBerandaBerita();
+
+  /* Muat data peminjaman tersimpan */
+  peminjamanList = loadPeminjaman();
+  syncStokDariPeminjaman();
+
+  /* Cek session tersimpan */
+  var saved=loadSession();
+  if(saved){
+    setUser(saved);
+    goTo('page-dashboard',renderAktif);
+  }
+})();
+</script>
+</body>
+</html>
